@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAG Chatbot</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <div class="brand">
+          <div class="logo">R</div>
+          <div>
+            <h1>RAG Chatbot</h1>
+            <div class="hint">Local Ollama + Chroma</div>
+          </div>
+        </div>
+        <div class="controls-bar">
+          <label class="control">
+            Top‑K
+            <input id="topk" type="number" min="1" max="10" value="5" />
+          </label>
+          <label class="control">
+            Sources
+            <input id="toggle-sources" type="checkbox" checked />
+          </label>
+          <button id="clear" class="ghost">Clear</button>
+        </div>
+      </header>
+
+      <div class="main">
+        <main id="messages" class="messages" aria-live="polite" aria-label="Chat messages"></main>
+        <aside id="sources" class="sidebar" aria-label="Retrieved sources">
+          <div class="sidebar-title">Sources</div>
+          <div id="sources-list" class="sources-list"></div>
+        </aside>
+      </div>
+
+      <form id="composer" class="composer">
+        <textarea id="prompt" rows="1" placeholder="Ask anything… (Shift+Enter for newline)"></textarea>
+        <button id="send" type="submit">Send</button>
+      </form>
+
+      <footer class="footer">
+        <div class="hint">
+          Tip: Ingest your data first and ensure Ollama is running at localhost:7860.
+        </div>
+      </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+  </html>
