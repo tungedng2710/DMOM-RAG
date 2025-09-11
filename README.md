@@ -2,6 +2,9 @@ RAG over Dmom_dataset (Hugging Face)
 
 This project builds a Retrieval Augmented Generation (RAG) pipeline over the `tungedng2710/Dmom_dataset` dataset using a local vector database (Chroma) and an Ollama-served LLM.
 
+Demo
+![Chat Demo](app/static/demo.png)
+
 Key choices:
 - Vector DB: Chroma (local persistent store)
 - Embeddings: via Ollama `/api/embeddings` (default: `nomic-embed-text`)
