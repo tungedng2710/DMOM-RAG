@@ -8,25 +8,13 @@ from .config import settings
 
 
 class ChromaStore:
-    def __init__(self, collection_name: str | None = None, persist_dir: str | None = None, create_if_missing: bool = False):
-        # Resolve persist dir; if relative, anchor to project root (dir of this file/..)
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-        cfg_dir = persist_dir or settings.chroma_dir
-        if not os.path.isabs(cfg_dir):
-            cfg_dir = os.path.abspath(os.path.join(base_dir, cfg_dir))
-        self.persist_dir = cfg_dir
+    def __init__(self, collection_name: str | None = None, persist_dir: str | None = None):
+        self.persist_dir = persist_dir or settings.chroma_dir
         os.makedirs(self.persist_dir, exist_ok=True)
         # Use PersistentClient to be compatible with on-disk DBs created elsewhere
+        # and avoid telemetry issues.
         self.client = chromadb.PersistentClient(path=self.persist_dir)
-        name = collection_name or settings.collection_name
-        if create_if_missing:
-            self.collection = self.client.get_or_create_collection(name=name)
-        else:
-            # Raise error if not found to avoid silently querying an empty collection
-            try:
-                self.collection = self.client.get_collection(name)
-            except Exception as e:
-                raise RuntimeError(f"Chroma collection '{name}' not found in '{self.persist_dir}'. Verify CHROMA_DIR/CHROMA_COLLECTION or build the DB.") from e
+        self.collection = self.client.get_or_create_collection(name=collection_name or settings.collection_name)
 
     def add(self, ids: List[str], documents: List[str], embeddings: List[List[float]], metadatas: List[Dict[str, Any]] | None = None):
         self.collection.add(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)

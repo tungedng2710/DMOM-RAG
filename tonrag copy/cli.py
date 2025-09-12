@@ -48,7 +48,7 @@ def cmd_ingest(args: argparse.Namespace):
         return
 
     emb = get_default_embeddings()
-    store = ChromaStore(persist_dir=settings.chroma_dir, collection_name=settings.collection_name, create_if_missing=True)
+    store = ChromaStore(persist_dir=settings.chroma_dir, collection_name=settings.collection_name)
 
     ids: List[str] = []
     docs: List[str] = []

@@ -33,7 +33,7 @@ def build_prompt(question: str, contexts: List[str]) -> List[Dict[str, str]]:
 class RAGPipeline:
     def __init__(self, top_k: Optional[int] = None):
         self.emb = get_default_embeddings()
-        self.store = ChromaStore(create_if_missing=False)
+        self.store = ChromaStore()
         self.chat = get_default_chat()
         self.top_k = top_k or settings.top_k
 
