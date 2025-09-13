@@ -21,7 +21,7 @@ body {
 
 .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; flex: 0 0 auto; }
 .brand { display: flex; align-items: center; gap: 12px; }
-.logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--assistant)); color: #0b1220; display: grid; place-items: center; font-weight: 800; }
+.logo { width: 36px; height: 36px; border-radius: 10px; display: block; object-fit: cover; }
 h1 { margin: 0; font-size: 18px; }
 .hint { color: var(--muted); font-size: 12px; }
 
