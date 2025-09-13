@@ -13,6 +13,15 @@ class Settings:
     generation_model: str = os.getenv("GENERATION_MODEL", "gpt-oss:20b")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
 
+    # Gemini / API
+    # Default to public Google Generative Language API v1 endpoint
+    gemini_base_url: str = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
+    # Default chat backend: 'ollama' or 'gemini'
+    chat_backend: str = os.getenv("CHAT_BACKEND", "ollama")
+
     # Vector store
     # Default to the DB built by scripts/build_vector_db.py
     chroma_dir: str = os.getenv("CHROMA_DIR", os.path.abspath("./data/chroma_dmom"))

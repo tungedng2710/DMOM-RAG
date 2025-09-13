@@ -18,6 +18,13 @@
         </div>
         <div class="controls-bar">
           <label class="control">
+            LLM
+            <select id="llm">
+              <option value="ollama" selected>Ollama</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </label>
+          <label class="control">
             Top‑K
             <input id="topk" type="number" min="1" max="10" value="5" />
           </label>

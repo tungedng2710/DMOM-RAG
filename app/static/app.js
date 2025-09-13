@@ -4,6 +4,7 @@ const promptEl = document.getElementById('prompt');
 const sendBtn = document.getElementById('send');
 const topkEl = document.getElementById('topk');
 const clearBtn = document.getElementById('clear');
+const llmEl = document.getElementById('llm');
 const sourcesToggleEl = document.getElementById('toggle-sources');
 const sourcesPanelEl = document.getElementById('sources');
 const sourcesListEl = document.getElementById('sources-list');
@@ -213,7 +214,11 @@ function removeEl(el) { if (el && el.parentNode) el.parentNode.removeChild(el); 
 async function sendPrompt(q) {
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: q, top_k: Number(topkEl.value || 5) })
+    body: JSON.stringify({
+      message: q,
+      top_k: Number(topkEl.value || 5),
+      llm: llmEl ? (llmEl.value || '').toLowerCase() : undefined,
+    })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || data.error || 'Request failed');

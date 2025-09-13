@@ -97,7 +97,7 @@ def _strip_markdown_html(s: str) -> str:
 
 
 def cmd_query(args: argparse.Namespace):
-    rag = RAGPipeline(top_k=args.top_k)
+    rag = RAGPipeline(top_k=args.top_k, llm=getattr(args, 'llm', None))
     res = rag.answer(args.question, top_k=args.top_k)
     ans = res["answer"]
     if getattr(args, "strip_markdown", False):
@@ -121,7 +121,7 @@ def cmd_eval(args: argparse.Namespace):
     if not q_field or not a_field:
         raise ValueError("Need --question-field and --answer-field (or auto-detected) for eval")
 
-    rag = RAGPipeline(top_k=args.top_k)
+    rag = RAGPipeline(top_k=args.top_k, llm=getattr(args, 'llm', None))
     n = len(ds) if args.limit is None else min(args.limit, len(ds))
     total = 0
     correct = 0
@@ -176,6 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
     pq = sub.add_parser("query", help="Ask a question against the indexed KB")
     pq.add_argument("--question", required=True)
     pq.add_argument("--top-k", type=int, default=settings.top_k)
+    pq.add_argument("--llm", choices=["ollama", "gemini"], default=None, help="Choose chat backend (overrides CHAT_BACKEND)")
     pq.add_argument("--strip-markdown", action="store_true", help="Strip Markdown/HTML from answer for plain-text output")
     pq.set_defaults(func=cmd_query)
 
@@ -188,6 +189,7 @@ def build_parser() -> argparse.ArgumentParser:
     pe.add_argument("--answer-field", default=None)
     pe.add_argument("--top-k", type=int, default=settings.top_k)
     pe.add_argument("--limit", type=int, default=None)
+    pe.add_argument("--llm", choices=["ollama", "gemini"], default=None, help="Choose chat backend (overrides CHAT_BACKEND)")
     pe.set_defaults(func=cmd_eval)
 
     return p
