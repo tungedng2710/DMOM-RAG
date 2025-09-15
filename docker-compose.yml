@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    image: tonrag:latest
+    container_name: tonrag-app
+    ports:
+      - "7865:7865"
+    env_file:
+      - .env
+    environment:
+      - UVICORN_WORKERS=1
+    restart: unless-stopped
+

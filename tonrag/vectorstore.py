@@ -19,14 +19,31 @@ class ChromaStore:
         # Use PersistentClient to be compatible with on-disk DBs created elsewhere
         self.client = chromadb.PersistentClient(path=self.persist_dir)
         name = collection_name or settings.collection_name
+
+        # For text queries without external embedding servers, prefer to attach
+        # the same SentenceTransformerEmbeddingFunction used during ingest
+        embed_fn = None
+        try:
+            from chromadb.utils import embedding_functions as _ef
+            embed_fn = _ef.SentenceTransformerEmbeddingFunction(
+                model_name="all-MiniLM-L6-v2"
+            )
+        except Exception:
+            embed_fn = None  # optional; query_text will fallback in RAGPipeline
+
         if create_if_missing:
-            self.collection = self.client.get_or_create_collection(name=name)
+            self.collection = self.client.get_or_create_collection(name=name, embedding_function=embed_fn)
         else:
             # Raise error if not found to avoid silently querying an empty collection
             try:
-                self.collection = self.client.get_collection(name)
+                if embed_fn is not None:
+                    self.collection = self.client.get_collection(name, embedding_function=embed_fn)
+                else:
+                    self.collection = self.client.get_collection(name)
             except Exception as e:
-                raise RuntimeError(f"Chroma collection '{name}' not found in '{self.persist_dir}'. Verify CHROMA_DIR/CHROMA_COLLECTION or build the DB.") from e
+                raise RuntimeError(
+                    f"Chroma collection '{name}' not found in '{self.persist_dir}'. Verify CHROMA_DIR/CHROMA_COLLECTION or build the DB."
+                ) from e
 
     def add(self, ids: List[str], documents: List[str], embeddings: List[List[float]], metadatas: List[Dict[str, Any]] | None = None):
         self.collection.add(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
