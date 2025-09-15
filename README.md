@@ -16,11 +16,30 @@ Key choices:
 Prerequisites
 - Python 3.9+
 - `pip`
-- Ollama running locally and reachable at `http://localhost:7860`
-  - Set Ollama to listen on 7860, or proxy 7860 → Ollama. Example: `export OLLAMA_HOST=0.0.0.0:7860 && ollama serve`
-  - Pull models:
-    - `ollama pull gpt-oss:20b`
-    - `ollama pull nomic-embed-text`
+- Ollama installed and running, reachable at `http://localhost:7860`
+
+Install Ollama
+- Linux:
+  - `curl -fsSL https://ollama.com/install.sh | sh`
+  - Start on port 7860: `export OLLAMA_HOST=0.0.0.0:7860 && ollama serve`
+- macOS:
+  - `brew install ollama` (or download the app from ollama.com)
+  - Start on port 7860: `export OLLAMA_HOST=0.0.0.0:7860 && ollama serve`
+- Windows:
+  - Install the Ollama app from ollama.com or via `winget install Ollama.Ollama`
+  - Run it once, then in a terminal: `setx OLLAMA_HOST 0.0.0.0:7860` and restart Ollama (or use WSL with the Linux command above).
+- Docker (optional):
+  - `docker run -d --name ollama -p 7860:11434 -v ollama:/root/.ollama ollama/ollama`
+  - The API is then available at `http://localhost:7860` (mapped to container’s 11434).
+
+Verify Ollama
+- `curl http://localhost:7860/api/tags` should return JSON (empty if no models yet).
+
+Pull required models
+- Generation (Ollama): `ollama pull gpt-oss:20b`
+- Embeddings (defaults to `nomic-embed-text`; this project may use `bge-m3:latest` via `.env`):
+  - `ollama pull nomic-embed-text`
+  - or `ollama pull bge-m3:latest`
 
 Install
 ```

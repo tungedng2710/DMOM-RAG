@@ -17,15 +17,8 @@ RUN apt-get update \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Optional: pre-download sentence-transformers model to speed up first run
-RUN python - <<'PY'
-from chromadb.utils import embedding_functions
-try:
-    embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-    print("[docker] Pre-fetched all-MiniLM-L6-v2 model")
-except Exception as e:
-    print("[docker] Skipping model prefetch:", e)
-PY
+# Using OllamaEmbeddings (HTTP to OLLAMA_BASE_URL) per app defaults
+# No sentence-transformers model prefetch is needed here.
 
 # Copy application code and data (including prebuilt Chroma DB)
 COPY . .
