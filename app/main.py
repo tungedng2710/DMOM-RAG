@@ -23,6 +23,7 @@ from tonrag.rag import RAGPipeline  # noqa: E402
 class ChatRequest(BaseModel):
     message: str
     top_k: Optional[int] = 5
+    llm: Optional[str] = None  # 'ollama' | 'gemini'
 
 class DebugRetrieveRequest(BaseModel):
     query: str
@@ -68,7 +69,24 @@ def make_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="Missing 'message'")
         top_k = int(req.top_k or 5)
         try:
-            result = rag.answer(q, top_k=top_k)
+            # If llm override is provided, build a per-request pipeline to avoid
+            # mutating the shared instance (thread-safe for mixed backends).
+            used_llm = None
+            if req.llm:
+                llm_choice = (req.llm or "").strip().lower()
+                if llm_choice not in ("ollama", "gemini"):
+                    raise HTTPException(status_code=400, detail="Invalid 'llm' value; use 'ollama' or 'gemini'")
+                local_rag = RAGPipeline(llm=llm_choice)
+                result = local_rag.answer(q, top_k=top_k)
+                used_llm = llm_choice
+            else:
+                result = rag.answer(q, top_k=top_k)
+                # Infer backend from shared pipeline
+                try:
+                    from tonrag.llm import GeminiChat
+                    used_llm = 'gemini' if isinstance(rag.chat, GeminiChat) else 'ollama'
+                except Exception:
+                    used_llm = 'ollama'
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"RAG error: {e}")
         contexts = [
@@ -79,7 +97,7 @@ def make_app() -> FastAPI:
             }
             for c in (result.get("contexts") or [])
         ]
-        return {"answer": result.get("answer", ""), "contexts": contexts}
+        return {"answer": result.get("answer", ""), "contexts": contexts, "backend": used_llm}
 
     # Debug endpoints to bring dev checks into the app
     @app.get("/api/debug/config")
