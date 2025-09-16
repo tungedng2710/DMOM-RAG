@@ -9,6 +9,9 @@ services:
       - "7865:7865"
     env_file:
       - .env
+    volumes:
+      - ./:/app
+      - ./data:/app/data
     environment:
       - UVICORN_WORKERS=1
     restart: unless-stopped
