@@ -8,6 +8,10 @@ const llmEl = document.getElementById('llm');
 const sourcesToggleEl = document.getElementById('toggle-sources');
 const sourcesPanelEl = document.getElementById('sources');
 const sourcesListEl = document.getElementById('sources-list');
+const controlsBtn = document.getElementById('toggle-controls');
+const controlBoardEl = document.getElementById('control-board');
+const geminiKeyRow = document.getElementById('gemini-key-row');
+const geminiKeyInput = document.getElementById('gemini-key');
 
 const state = {
   messages: [], // { role: 'user'|'assistant', content: string, contexts?: [] }
@@ -130,6 +134,39 @@ function renderSources(contexts = []) {
   });
 }
 
+// Control board toggle
+if (controlsBtn && controlBoardEl) {
+  const toggle = () => {
+    const isOpen = controlBoardEl.classList.toggle('open');
+    controlsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  };
+  controlsBtn.addEventListener('click', toggle);
+}
+
+// Show Gemini key input only when Gemini is selected
+function updateGeminiKeyVisibility() {
+  if (!llmEl || !geminiKeyRow) return;
+  const isGemini = (llmEl.value || '').toLowerCase() === 'gemini';
+  geminiKeyRow.style.display = isGemini ? '' : 'none';
+}
+if (llmEl) {
+  llmEl.addEventListener('change', updateGeminiKeyVisibility);
+  // initialize
+  updateGeminiKeyVisibility();
+}
+
+// Persist Gemini key locally (optional convenience)
+const GEMINI_KEY_STORAGE = 'gemini_api_key';
+if (geminiKeyInput) {
+  try {
+    const saved = localStorage.getItem(GEMINI_KEY_STORAGE);
+    if (saved) geminiKeyInput.value = saved;
+  } catch (e) {}
+  geminiKeyInput.addEventListener('input', () => {
+    try { localStorage.setItem(GEMINI_KEY_STORAGE, geminiKeyInput.value || ''); } catch (e) {}
+  });
+}
+
 function renderMessage(msg) {
   const row = document.createElement('div');
   row.className = `message ${msg.role}`;
@@ -150,29 +187,7 @@ function renderMessage(msg) {
   }
   bubble.appendChild(content);
 
-  // Tools: copy
-  const tools = document.createElement('div');
-  tools.className = 'tools';
-  const copyBtn = document.createElement('button');
-  copyBtn.className = 'btn';
-  copyBtn.textContent = 'Copy';
-  copyBtn.addEventListener('click', () => navigator.clipboard.writeText(msg.content || ''));
-  tools.appendChild(copyBtn);
-  // Per-message Sources toggle (assistant only)
-  if (msg.role === 'assistant') {
-    const srcBtn = document.createElement('button');
-    srcBtn.className = 'btn';
-    srcBtn.textContent = 'Sources';
-    srcBtn.addEventListener('click', () => {
-      if (msg.contexts) renderSources(msg.contexts);
-      if (sourcesPanelEl && sourcesToggleEl) {
-        sourcesToggleEl.checked = true;
-        sourcesPanelEl.style.display = '';
-      }
-    });
-    tools.appendChild(srcBtn);
-  }
-  bubble.appendChild(tools);
+  // Removed per-message tools (Copy, Sources)
 
   // Contexts are displayed in the right sidebar, not within the message bubble
 
@@ -218,6 +233,7 @@ async function sendPrompt(q) {
       message: q,
       top_k: Number(topkEl.value || 5),
       llm: llmEl ? (llmEl.value || '').toLowerCase() : undefined,
+      gemini_api_key: (llmEl && (llmEl.value || '').toLowerCase() === 'gemini' && geminiKeyInput) ? (geminiKeyInput.value || '').trim() : undefined,
     })
   });
   const data = await res.json();

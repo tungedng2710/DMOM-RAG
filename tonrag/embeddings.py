@@ -63,6 +63,9 @@ class SentenceTransformerEmbeddings(Embeddings):
 
 
 def get_default_embeddings() -> Embeddings:
-    """Return the default embeddings client (Ollama)."""
-    return OllamaEmbeddings()
+    """Return the default embeddings client (Ollama) using bge-m3.
 
+    Force the embedding model to Ollama's bge-m3 to ensure consistency
+    across ingestion and retrieval regardless of environment overrides.
+    """
+    return OllamaEmbeddings(model="bge-m3:latest")

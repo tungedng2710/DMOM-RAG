@@ -31,10 +31,11 @@ def build_prompt(question: str, contexts: List[str]) -> List[Dict[str, str]]:
 
 
 class RAGPipeline:
-    def __init__(self, top_k: Optional[int] = None, llm: Optional[str] = None):
+    def __init__(self, top_k: Optional[int] = None, llm: Optional[str] = None, gemini_api_key: Optional[str] = None):
         self.emb = get_default_embeddings()
         self.store = ChromaStore(create_if_missing=False)
-        self.chat = get_default_chat(llm)
+        # Pass through gemini_api_key if provided
+        self.chat = get_default_chat(llm, api_key=gemini_api_key)
         self.top_k = top_k or settings.top_k
 
     def retrieve(self, query: str, top_k: Optional[int] = None):

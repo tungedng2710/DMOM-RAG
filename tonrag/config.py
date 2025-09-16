@@ -11,7 +11,7 @@ class Settings:
     # Ollama / API
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:7860")
     generation_model: str = os.getenv("GENERATION_MODEL", "gpt-oss:20b")
-    embedding_model: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "bge-m3:latest")
 
     # Gemini / API
     # Default to public Google Generative Language API v1 endpoint

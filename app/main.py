@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
     message: str
     top_k: Optional[int] = 5
     llm: Optional[str] = None  # 'ollama' | 'gemini'
+    gemini_api_key: Optional[str] = None
 
 class DebugRetrieveRequest(BaseModel):
     query: str
@@ -76,7 +77,11 @@ def make_app() -> FastAPI:
                 llm_choice = (req.llm or "").strip().lower()
                 if llm_choice not in ("ollama", "gemini"):
                     raise HTTPException(status_code=400, detail="Invalid 'llm' value; use 'ollama' or 'gemini'")
-                local_rag = RAGPipeline(llm=llm_choice)
+                # If Gemini is chosen and an API key is provided, pass it to the pipeline
+                if llm_choice == 'gemini':
+                    local_rag = RAGPipeline(llm=llm_choice, gemini_api_key=(req.gemini_api_key or None))
+                else:
+                    local_rag = RAGPipeline(llm=llm_choice)
                 result = local_rag.answer(q, top_k=top_k)
                 used_llm = llm_choice
             else:

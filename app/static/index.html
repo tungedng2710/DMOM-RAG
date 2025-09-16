@@ -18,6 +18,12 @@
           </div>
         </div>
         <div class="controls-bar">
+          <button id="toggle-controls" class="ghost" aria-expanded="false" aria-controls="control-board">Controls</button>
+        </div>
+      </header>
+
+      <section id="control-board" class="control-board" aria-label="Control Board">
+        <div class="controls-bar">
           <label class="control">
             LLM
             <select id="llm">
@@ -33,9 +39,13 @@
             Sources
             <input id="toggle-sources" type="checkbox" checked />
           </label>
-          <button id="clear" class="ghost">Clear</button>
+          <label class="control" id="gemini-key-row" style="display:none">
+            Gemini Key
+            <input id="gemini-key" type="password" placeholder="Enter Gemini API Key" autocomplete="off" />
+          </label>
+          <button id="clear" class="ghost" title="Clear conversation">Clear</button>
         </div>
-      </header>
+      </section>
 
       <div class="main">
         <main id="messages" class="messages" aria-live="polite" aria-label="Chat messages"></main>
@@ -46,7 +56,7 @@
       </div>
 
       <form id="composer" class="composer">
-        <textarea id="prompt" rows="1" placeholder="Ask anything… (Shift+Enter for newline)"></textarea>
+        <textarea id="prompt" rows="1" placeholder="Ask anything... (Shift+Enter for newline)"></textarea>
         <button id="send" type="submit">Send</button>
       </form>
 

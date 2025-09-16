@@ -71,6 +71,7 @@ class RAGRequestHandler(SimpleHTTPRequestHandler):
             question = (body.get("message") or body.get("question") or "").strip()
             top_k = int(body.get("top_k") or 5)
             llm = (body.get("llm") or body.get("provider") or body.get("backend") or "").strip().lower() or None
+            gemini_api_key = (body.get("gemini_api_key") or "").strip() or None
             if not question:
                 return self._json({"error": "Missing 'message'"}, status=HTTPStatus.BAD_REQUEST)
 
@@ -79,7 +80,10 @@ class RAGRequestHandler(SimpleHTTPRequestHandler):
                 if llm is None:
                     rag = self.rag
                 else:
-                    rag = RAGPipeline(top_k=top_k, llm=llm)
+                    if llm == 'gemini':
+                        rag = RAGPipeline(top_k=top_k, llm=llm, gemini_api_key=gemini_api_key)
+                    else:
+                        rag = RAGPipeline(top_k=top_k, llm=llm)
                 result = rag.answer(question, top_k=top_k)
             except Exception as e:
                 return self._json({"error": f"RAG error: {e}"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)

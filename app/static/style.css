@@ -33,6 +33,22 @@ input[type="number"] {
   width: 72px; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text);
 }
 
+/* Control board panel */
+.control-board {
+  display: none;
+  background: rgba(14, 23, 38, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.control-board.open { display: block; }
+
+/* Inputs and selects styling */
+select, input[type="text"], input[type="password"] {
+  padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text);
+}
+
 .main { display: flex; gap: 12px; flex: 1 1 auto; min-height: 0; }
 
 .messages {

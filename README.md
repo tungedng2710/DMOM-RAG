@@ -9,7 +9,7 @@ Demo
 
 Key choices:
 - Vector DB: Chroma (local persistent store)
-- Embeddings: via Ollama `/api/embeddings` (default: `nomic-embed-text`)
+- Embeddings: via Ollama `/api/embeddings` (default: `bge-m3:latest`)
 - Generator: selectable — Ollama `/api/chat` or Google Gemini REST
 - Dataset: `tungedng2710/Dmom_dataset` (fetched with `datasets`)
 
@@ -37,9 +37,8 @@ Verify Ollama
 
 Pull required models
 - Generation (Ollama): `ollama pull gpt-oss:20b`
-- Embeddings (defaults to `nomic-embed-text`; this project may use `bge-m3:latest` via `.env`):
-  - `ollama pull nomic-embed-text`
-  - or `ollama pull bge-m3:latest`
+- Embeddings (default `bge-m3:latest`):
+  - `ollama pull bge-m3:latest`
 
 Install
 ```
@@ -53,7 +52,7 @@ Configure (optional)
 - Defaults:
   - `OLLAMA_BASE_URL=http://localhost:7860`
   - `GENERATION_MODEL=gpt-oss:20b`
-  - `EMBEDDING_MODEL=nomic-embed-text`
+  - `EMBEDDING_MODEL=bge-m3:latest`
   - `CHROMA_DIR=./data/chroma`
   - `CHAT_BACKEND=ollama` (set to `gemini` to use Gemini)
   - For Gemini: set `GEMINI_API_KEY` and optionally `GEMINI_MODEL` (e.g., `gemini-1.5-flash`)
@@ -132,7 +131,7 @@ Project Structure
 - `app/static/` – frontend assets (index.html, style.css, app.js)
 
 Troubleshooting
-- If embeddings fail, ensure the embedding model is pulled and available in Ollama: `ollama pull nomic-embed-text`.
+- If embeddings fail, ensure the embedding model is pulled and available in Ollama: `ollama pull bge-m3:latest`.
 - If generation fails, ensure `gpt-oss:20b` is available: `ollama pull gpt-oss:20b`.
 - If dataset download fails, ensure your environment has internet access and the `datasets` package can reach Hugging Face.
 

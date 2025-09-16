@@ -43,19 +43,21 @@ class GeminiChat:
     `https://generativelanguage.googleapis.com/v1/models/{model}:generateContent`.
     """
 
-    def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None, timeout: int = 300):
+    def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None, timeout: int = 300, api_key: Optional[str] = None):
         self.base_url = (base_url or settings.gemini_base_url).rstrip("/")
         self.model = model or getattr(settings, "gemini_model", None) or settings.generation_model
         self.timeout = timeout
 
+        # Resolve API key: prefer explicit override, else settings
+        self.api_key = (api_key or getattr(settings, "gemini_api_key", None) or "").strip()
+
         # Try to initialize google-genai client; if unavailable, use REST fallback
         self._use_sdk = False
         self._sdk = None  # type: ignore
-        api_key = getattr(settings, "gemini_api_key", None)
-        if api_key:
+        if self.api_key:
             try:
                 from google import genai  # type: ignore
-                self._sdk = genai.Client(api_key=api_key)
+                self._sdk = genai.Client(api_key=self.api_key)
                 self._use_sdk = True
             except Exception:
                 # Keep REST fallback
@@ -92,9 +94,9 @@ class GeminiChat:
         return out
 
     def generate(self, messages: List[Dict[str, str]], temperature: float = 0.2, system: Optional[str] = None) -> str:
-        api_key = getattr(settings, "gemini_api_key", None)
+        api_key = self.api_key or getattr(settings, "gemini_api_key", None)
         if not api_key:
-            raise RuntimeError("GEMINI_API_KEY not configured in environment")
+            raise RuntimeError("GEMINI_API_KEY not configured")
 
         # Prefer SDK path if available
         if self._use_sdk and self._sdk is not None:
@@ -163,7 +165,7 @@ class GeminiChat:
                 texts.append(t)
         return "\n".join(texts).strip()
 
-def get_default_chat(backend: Optional[str] = None):
+def get_default_chat(backend: Optional[str] = None, *, api_key: Optional[str] = None):
     """Return chat client based on backend preference or env.
 
     backend: 'ollama' | 'gemini' | None
@@ -171,6 +173,6 @@ def get_default_chat(backend: Optional[str] = None):
     """
     choice = (backend or getattr(settings, 'chat_backend', None) or 'ollama').lower()
     if choice.startswith('gemini'):
-        return GeminiChat()
+        return GeminiChat(api_key=api_key)
     # default to Ollama
     return OllamaChat()
