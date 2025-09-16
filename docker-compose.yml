@@ -3,7 +3,7 @@ version: "3.8"
 services:
   app:
     build: .
-    image: tonrag:latest
+    image: tungedng2710/tonrag:latest
     container_name: tonrag-app
     ports:
       - "7865:7865"
