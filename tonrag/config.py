@@ -37,5 +37,11 @@ class Settings:
     # Retrieval
     top_k: int = int(os.getenv("TOP_K", "5"))
 
+    # Hugging Face
+    hf_repo_id: str = os.getenv("HF_REPO_ID", "")
+    hf_token: str = os.getenv("HF_TOKEN", "")
+    hf_branch: str = os.getenv("HF_BRANCH", "main")
+    hf_private: bool = os.getenv("HF_PRIVATE", "false").lower() in {"1", "true", "yes"}
+
 
 settings = Settings()
