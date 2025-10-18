@@ -62,7 +62,9 @@ def webhook():
             or data.get('text')
             or ''
         ).lower()
-        if user_id and message_text:
+        if not user_id or not message_text:
+            # Early exist if the user ID or message is invalid.
+            return
             logger.info(f'User ID: {user_id}, Message: {message_text}')
             
             # Logic bot
