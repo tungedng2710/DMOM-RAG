@@ -1,7 +1,9 @@
-from flask import Flask, request, jsonify
 import logging
+
+from flask import Flask, jsonify, request
+
 from config import Config
-from utils import verify_signature, send_message
+from utils import send_message, verify_signature
 
 app = Flask(__name__)
 
