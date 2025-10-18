@@ -1,21 +1,19 @@
-Cách tạo bot Zalo Bot Platform
+# Cách tạo bot Zalo Bot Platform
 
-I. Tạo Bot trên Zalo Bot Platform
-
- Mở Zalo → tìm "Zalo Bot Manager"
- Bấm vào "Tạo bot"
- Nhập tên bot (bắt đầu bằng "Bot")
- Lưu Bot Token từ tin nhắn bot gửi
-
-
--Tạo file .env và set key như bên dưới 
-
+## Tạo Bot trên Zalo Bot Platform
+1. Mở Zalo → tìm "Zalo Bot Manager".
+2. Bấm vào "Tạo bot".
+3. Nhập tên bot (bắt đầu bằng "Bot").
+4. Lưu Bot Token từ tin nhắn bot gửi.
+5. Tạo file .env và set key như bên dưới.
+`
 ZALO_BOT_TOKEN=your_bot_token_here
-
-Webhook Secret (tự tạo)
+`
+6. Webhook Secret (tự tạo).
+`
 ZALO_BOT_WEBHOOK_SECRET=your_secret_key_here
-
 DEBUG=true
+`
 
 
 
