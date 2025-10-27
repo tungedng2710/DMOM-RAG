@@ -10,7 +10,7 @@ Demo
 Key choices:
 - Vector DB: Chroma (local persistent store)
 - Embeddings: via Ollama `/api/embeddings` (default: `bge-m3:latest`)
-- Generator: selectable — Ollama `/api/chat` or Google Gemini REST
+- Generator: selectable — Ollama `/api/chat`, Google Gemini REST, or Cerebras Cloud
 - Dataset: `tungedng2710/Dmom_dataset` (fetched with `datasets`)
 
 Prerequisites
@@ -54,8 +54,9 @@ Configure (optional)
   - `GENERATION_MODEL=gpt-oss:20b`
   - `EMBEDDING_MODEL=bge-m3:latest`
   - `CHROMA_DIR=./data/chroma`
-  - `CHAT_BACKEND=ollama` (set to `gemini` to use Gemini)
+  - `CHAT_BACKEND=ollama` (set to `gemini` or `cerebras` to switch cloud providers)
   - For Gemini: set `GEMINI_API_KEY` and optionally `GEMINI_MODEL` (e.g., `gemini-1.5-flash`)
+  - For Cerebras: set `CEREBRAS_API_KEY` and optionally `CEREBRAS_MODEL` (e.g., `llama-4-scout-17b-16e-instruct`)
 
 Commands
 
@@ -93,9 +94,10 @@ python -m tonrag.cli query \
   --top-k 5
 ```
 
-Use Gemini instead of Ollama for this run:
+Use Gemini or Cerebras instead of Ollama for this run:
 ```
 python -m tonrag.cli query --question "<your question>" --llm gemini
+python -m tonrag.cli query --question "<your question>" --llm cerebras
 ```
 
 4) Evaluate on the dataset (quick lexical match)
@@ -140,7 +142,7 @@ Web App
 - Open: `http://localhost:7865`
 - Endpoints:
   - `GET /` – serves UI
-  - `POST /api/chat` – body: `{ "message": "...", "top_k": 5, "llm": "ollama|gemini" }`
+  - `POST /api/chat` – body: `{ "message": "...", "top_k": 5, "llm": "ollama|gemini|cerebras", "llm_api_key": "optional" }`
   - `GET /health`
 - The app uses the same RAG pipeline and Chroma store.
 
@@ -152,7 +154,7 @@ Chat UI
 - Shift+Enter for newline, Enter to send, clear chat, adjustable Top‑K.
 - Answers render Markdown (headings, lists, links, code blocks) safely in the UI.
 - CLI: add `--strip-markdown` to print plain‑text answers.
- - LLM selector in the header to switch between Ollama and Gemini per request.
+ - LLM selector in the header to switch between Ollama, Gemini, or Cerebras per request.
 
 License
 - For this template, no explicit license is added; adapt as needed.

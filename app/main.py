@@ -18,13 +18,16 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from tonrag.rag import RAGPipeline  # noqa: E402
+from tonrag.llm import CerebrasChat, GeminiChat  # noqa: E402
 
 
 class ChatRequest(BaseModel):
     message: str
     top_k: Optional[int] = 5
-    llm: Optional[str] = None  # 'ollama' | 'gemini'
+    llm: Optional[str] = None  # 'ollama' | 'gemini' | 'cerebras'
     gemini_api_key: Optional[str] = None
+    cerebras_api_key: Optional[str] = None
+    llm_api_key: Optional[str] = None
 
 class DebugRetrieveRequest(BaseModel):
     query: str
@@ -75,21 +78,26 @@ def make_app() -> FastAPI:
             used_llm = None
             if req.llm:
                 llm_choice = (req.llm or "").strip().lower()
-                if llm_choice not in ("ollama", "gemini"):
-                    raise HTTPException(status_code=400, detail="Invalid 'llm' value; use 'ollama' or 'gemini'")
-                # If Gemini is chosen and an API key is provided, pass it to the pipeline
-                if llm_choice == 'gemini':
-                    local_rag = RAGPipeline(llm=llm_choice, gemini_api_key=(req.gemini_api_key or None))
-                else:
-                    local_rag = RAGPipeline(llm=llm_choice)
+                if llm_choice not in ("ollama", "gemini", "cerebras"):
+                    raise HTTPException(status_code=400, detail="Invalid 'llm' value; use 'ollama', 'gemini', or 'cerebras'")
+                key_override = (
+                    req.llm_api_key
+                    or (req.gemini_api_key if llm_choice == "gemini" else None)
+                    or (req.cerebras_api_key if llm_choice == "cerebras" else None)
+                )
+                local_rag = RAGPipeline(llm=llm_choice, api_key=key_override)
                 result = local_rag.answer(q, top_k=top_k)
                 used_llm = llm_choice
             else:
                 result = rag.answer(q, top_k=top_k)
                 # Infer backend from shared pipeline
                 try:
-                    from tonrag.llm import GeminiChat
-                    used_llm = 'gemini' if isinstance(rag.chat, GeminiChat) else 'ollama'
+                    if isinstance(rag.chat, GeminiChat):
+                        used_llm = 'gemini'
+                    elif isinstance(rag.chat, CerebrasChat):
+                        used_llm = 'cerebras'
+                    else:
+                        used_llm = 'ollama'
                 except Exception:
                     used_llm = 'ollama'
         except Exception as e:

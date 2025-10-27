@@ -10,8 +10,9 @@ const sourcesPanelEl = document.getElementById('sources');
 const sourcesListEl = document.getElementById('sources-list');
 const controlsBtn = document.getElementById('toggle-controls');
 const controlBoardEl = document.getElementById('control-board');
-const geminiKeyRow = document.getElementById('gemini-key-row');
-const geminiKeyInput = document.getElementById('gemini-key');
+const llmKeyRow = document.getElementById('llm-key-row');
+const llmKeyLabel = document.getElementById('llm-key-label');
+const llmKeyInput = document.getElementById('llm-key');
 
 const state = {
   messages: [], // { role: 'user'|'assistant', content: string, contexts?: [] }
@@ -143,27 +144,68 @@ if (controlsBtn && controlBoardEl) {
   controlsBtn.addEventListener('click', toggle);
 }
 
-// Show Gemini key input only when Gemini is selected
-function updateGeminiKeyVisibility() {
-  if (!llmEl || !geminiKeyRow) return;
-  const isGemini = (llmEl.value || '').toLowerCase() === 'gemini';
-  geminiKeyRow.style.display = isGemini ? '' : 'none';
-}
-if (llmEl) {
-  llmEl.addEventListener('change', updateGeminiKeyVisibility);
-  // initialize
-  updateGeminiKeyVisibility();
+// Show API key input only when a cloud backend is selected
+const LLM_KEY_STORAGE_PREFIX = 'llm_api_key_';
+
+function loadStoredKey(choice) {
+  try {
+    return localStorage.getItem(LLM_KEY_STORAGE_PREFIX + choice) || '';
+  } catch (e) {
+    return '';
+  }
 }
 
-// Persist Gemini key locally (optional convenience)
-const GEMINI_KEY_STORAGE = 'gemini_api_key';
-if (geminiKeyInput) {
-  try {
-    const saved = localStorage.getItem(GEMINI_KEY_STORAGE);
-    if (saved) geminiKeyInput.value = saved;
-  } catch (e) {}
-  geminiKeyInput.addEventListener('input', () => {
-    try { localStorage.setItem(GEMINI_KEY_STORAGE, geminiKeyInput.value || ''); } catch (e) {}
+function updateLlmKeyVisibility() {
+  if (!llmEl || !llmKeyRow) return;
+  const choice = (llmEl.value || '').toLowerCase();
+  let label = 'API Key';
+  let show = false;
+
+  if (choice === 'gemini') {
+    show = true;
+    label = 'Gemini Key';
+  } else if (choice === 'cerebras') {
+    show = true;
+    label = 'Cerebras Key';
+  }
+
+  llmKeyRow.style.display = show ? '' : 'none';
+  if (llmKeyLabel) {
+    llmKeyLabel.textContent = label;
+  }
+  if (llmKeyInput) {
+    if (choice === 'gemini') {
+      llmKeyInput.placeholder = 'Enter Gemini API Key';
+    } else if (choice === 'cerebras') {
+      llmKeyInput.placeholder = 'Enter Cerebras API Key';
+    } else {
+      llmKeyInput.placeholder = 'Enter API Key';
+    }
+  }
+  if (show && llmKeyInput) {
+    const stored = loadStoredKey(choice);
+    if (stored && llmKeyInput.value !== stored) {
+      llmKeyInput.value = stored;
+    } else if (!stored && !llmKeyInput.value) {
+      llmKeyInput.value = '';
+    }
+  }
+}
+
+if (llmEl) {
+  llmEl.addEventListener('change', updateLlmKeyVisibility);
+  // initialize
+  updateLlmKeyVisibility();
+}
+
+if (llmKeyInput) {
+  llmKeyInput.addEventListener('input', () => {
+    if (!llmEl) return;
+    const choice = (llmEl.value || '').toLowerCase();
+    if (!choice) return;
+    try {
+      localStorage.setItem(LLM_KEY_STORAGE_PREFIX + choice, llmKeyInput.value || '');
+    } catch (e) {}
   });
 }
 
@@ -227,14 +269,27 @@ function addTyping() {
 function removeEl(el) { if (el && el.parentNode) el.parentNode.removeChild(el); }
 
 async function sendPrompt(q) {
+  const llmChoice = llmEl ? (llmEl.value || '').toLowerCase() : undefined;
+  const shouldIncludeKey = llmKeyRow && llmKeyRow.style.display !== 'none';
+  const keyValue = shouldIncludeKey && llmKeyInput ? (llmKeyInput.value || '').trim() : '';
+  const payload = {
+    message: q,
+    top_k: Number(topkEl.value || 5),
+    llm: llmChoice || undefined,
+  };
+  if (llmChoice && (llmChoice === 'gemini' || llmChoice === 'cerebras')) {
+    if (keyValue) {
+      payload.llm_api_key = keyValue;
+      if (llmChoice === 'gemini') {
+        payload.gemini_api_key = keyValue;
+      } else if (llmChoice === 'cerebras') {
+        payload.cerebras_api_key = keyValue;
+      }
+    }
+  }
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: q,
-      top_k: Number(topkEl.value || 5),
-      llm: llmEl ? (llmEl.value || '').toLowerCase() : undefined,
-      gemini_api_key: (llmEl && (llmEl.value || '').toLowerCase() === 'gemini' && geminiKeyInput) ? (geminiKeyInput.value || '').trim() : undefined,
-    })
+    body: JSON.stringify(payload)
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || data.error || 'Request failed');

@@ -29,6 +29,7 @@
             <select id="llm">
               <option value="ollama" selected>Ollama</option>
               <option value="gemini">Gemini</option>
+              <option value="cerebras">Cerebras</option>
             </select>
           </label>
           <label class="control">
@@ -39,9 +40,9 @@
             Sources
             <input id="toggle-sources" type="checkbox" checked />
           </label>
-          <label class="control" id="gemini-key-row" style="display:none">
-            Gemini Key
-            <input id="gemini-key" type="password" placeholder="Enter Gemini API Key" autocomplete="off" />
+          <label class="control" id="llm-key-row" style="display:none">
+            <span id="llm-key-label">API Key</span>
+            <input id="llm-key" type="password" placeholder="Enter API Key" autocomplete="off" />
           </label>
           <button id="clear" class="ghost" title="Clear conversation">Clear</button>
         </div>

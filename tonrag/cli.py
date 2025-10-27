@@ -176,7 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
     pq = sub.add_parser("query", help="Ask a question against the indexed KB")
     pq.add_argument("--question", required=True)
     pq.add_argument("--top-k", type=int, default=settings.top_k)
-    pq.add_argument("--llm", choices=["ollama", "gemini"], default=None, help="Choose chat backend (overrides CHAT_BACKEND)")
+    pq.add_argument("--llm", choices=["ollama", "gemini", "cerebras"], default=None, help="Choose chat backend (overrides CHAT_BACKEND)")
     pq.add_argument("--strip-markdown", action="store_true", help="Strip Markdown/HTML from answer for plain-text output")
     pq.set_defaults(func=cmd_query)
 
@@ -189,7 +189,7 @@ def build_parser() -> argparse.ArgumentParser:
     pe.add_argument("--answer-field", default=None)
     pe.add_argument("--top-k", type=int, default=settings.top_k)
     pe.add_argument("--limit", type=int, default=None)
-    pe.add_argument("--llm", choices=["ollama", "gemini"], default=None, help="Choose chat backend (overrides CHAT_BACKEND)")
+    pe.add_argument("--llm", choices=["ollama", "gemini", "cerebras"], default=None, help="Choose chat backend (overrides CHAT_BACKEND)")
     pe.set_defaults(func=cmd_eval)
 
     return p

@@ -19,7 +19,11 @@ class Settings:
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
-    # Default chat backend: 'ollama' or 'gemini'
+    # Cerebras / API
+    cerebras_api_key: str = os.getenv("CEREBRAS_API_KEY", "")
+    cerebras_model: str = os.getenv("CEREBRAS_MODEL", "llama-4-scout-17b-16e-instruct")
+
+    # Default chat backend: 'ollama', 'gemini', or 'cerebras'
     chat_backend: str = os.getenv("CHAT_BACKEND", "ollama")
 
     # Vector store

@@ -11,7 +11,7 @@ PROJECT_ROOT = os.path.dirname(BOT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from tonrag.llm import GeminiChat  # noqa: E402
+from tonrag.llm import CerebrasChat, GeminiChat, get_default_chat  # noqa: E402
 from config import Config
 from utils import send_message
 
@@ -34,22 +34,63 @@ SYSTEM_PROMPT = (
     "Luôn giữ giọng điệu chuyên nghiệp và dễ hiểu."
 )
 
-_gemini_chat: Optional[GeminiChat] = None
-_gemini_initialization_error: Optional[str] = None
+_chat_client: Optional[object] = None
+_chat_backend: Optional[str] = None
+_chat_initialization_error: Optional[str] = None
 
 
-def get_gemini_chat() -> Optional[GeminiChat]:
-    """Lazy-load the Gemini chat client for reuse across requests."""
-    global _gemini_chat, _gemini_initialization_error
-    if _gemini_chat is None and _gemini_initialization_error is None:
+def _resolve_backend() -> str:
+    """Determine which chat backend to use for the bot."""
+    raw = (
+        os.getenv("ZALO_CHAT_BACKEND")
+        or os.getenv("CHAT_BACKEND")
+        or "gemini"
+    )
+    choice = (raw or "").strip().lower()
+    if choice.startswith("ollama"):
+        return "ollama"
+    if choice.startswith("cerebras"):
+        return "cerebras"
+    if choice.startswith("gemini"):
+        return "gemini"
+    return "gemini"
+
+
+def _resolve_api_key(backend: str) -> Optional[str]:
+    env_map = {
+        "gemini": "GEMINI_API_KEY",
+        "cerebras": "CEREBRAS_API_KEY",
+    }
+    env_name = env_map.get(backend)
+    if not env_name:
+        return None
+    value = (os.getenv(env_name, "") or "").strip()
+    return value or None
+
+
+def get_chat_client() -> Optional[object]:
+    """Lazy-load the chat client for reuse across requests."""
+    global _chat_client, _chat_backend, _chat_initialization_error
+    backend = _resolve_backend()
+    needs_refresh = (_chat_client is None) or (_chat_backend != backend)
+    if needs_refresh or _chat_initialization_error is not None:
         try:
-            api_key_override = os.getenv("GEMINI_API_KEY", "").strip() or None
-            _gemini_chat = GeminiChat(api_key=api_key_override)
-            logger.info("GeminiChat initialized successfully for Zalo bot responses.")
+            api_key_override = _resolve_api_key(backend)
+            _chat_client = get_default_chat(backend, api_key=api_key_override)
+            if isinstance(_chat_client, GeminiChat):
+                _chat_backend = "gemini"
+            elif isinstance(_chat_client, CerebrasChat):
+                _chat_backend = "cerebras"
+            else:
+                _chat_backend = "ollama"
+            _chat_initialization_error = None
+            logger.info("Initialized chat backend '%s' for Zalo bot responses.", backend)
         except Exception as exc:  # pragma: no cover - defensive
-            _gemini_initialization_error = str(exc)
-            logger.exception("Failed to initialize GeminiChat: %s", exc)
-    return _gemini_chat
+            _chat_client = None
+            _chat_backend = backend
+            _chat_initialization_error = str(exc)
+            logger.exception("Failed to initialize chat backend '%s': %s", backend, exc)
+    return _chat_client
 
 
 @app.route('/')
@@ -104,9 +145,14 @@ def webhook():
 
         logger.info(f'User ID: {user_id}, Message: {message_text}')
 
-        chat = get_gemini_chat()
+        chat = get_chat_client()
+        backend_name = _chat_backend or _resolve_backend()
         if chat is None:
-            logger.error('GeminiChat chưa sẵn sàng: %s', _gemini_initialization_error or "unknown error")
+            logger.error(
+                "Chat backend '%s' chưa sẵn sàng: %s",
+                backend_name,
+                _chat_initialization_error or "unknown error",
+            )
             reply = 'Xin lỗi, hệ thống đang bận. Bạn thử lại sau nhé!'
         else:
             messages = [
@@ -117,8 +163,9 @@ def webhook():
             ]
             try:
                 reply = chat.generate(messages, system=SYSTEM_PROMPT) or ''
+                logger.info("Sinh phản hồi thành công bằng backend '%s'.", backend_name)
             except Exception as exc:  # pragma: no cover - defensive
-                logger.exception('Lỗi khi gọi Gemini: %s', exc)
+                logger.exception("Lỗi khi gọi backend '%s': %s", backend_name, exc)
                 reply = ''
 
         if not reply:
