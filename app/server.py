@@ -8,6 +8,8 @@ from http import HTTPStatus
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 
+from app.keywords_detection import URGENT_REPLY, is_urgent_keyword_exists
+
 
 # Ensure project root is on sys.path so we can import tonrag.* when run from app/
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -74,6 +76,16 @@ class RAGRequestHandler(SimpleHTTPRequestHandler):
             gemini_api_key = (body.get("gemini_api_key") or "").strip() or None
             if not question:
                 return self._json({"error": "Missing 'message'"}, status=HTTPStatus.BAD_REQUEST)
+
+            is_urgent_situation = is_urgent_keyword_exists(question)
+            if is_urgent_situation:
+                # When the urgent situation is detected, immediately return the default reply saying that this is an
+                # urgent situation.
+                return self._json({
+                    "answer": URGENT_REPLY,
+                    # TODO: There is no context for this message.
+                    "contexts": [],
+                })
 
             try:
                 # Instantiate per request if a different LLM is requested

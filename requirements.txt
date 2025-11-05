@@ -9,3 +9,4 @@ uvicorn
 google-genai==1.36.0
 sentence-transformers==2.7.0
 sentencepiece==0.2.1
+Unidecode==1.4.0
