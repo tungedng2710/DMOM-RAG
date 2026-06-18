@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>RAG Desk</title>
+    <title>DMOM RAG Workspace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,16 +14,29 @@
     <div class="container">
       <header class="header">
         <div class="brand">
-          <img class="logo" src="/static/logo.png" alt="Logo" />
+          <img class="logo" src="/static/logo.png" alt="DMOM logo" />
           <div>
-            <h1>RAG Desk</h1>
-            <div class="hint">Retrieval-ready chat workspace</div>
+            <div class="eyebrow">Knowledge Assistant</div>
+            <h1>DMOM RAG Workspace</h1>
           </div>
         </div>
-        <div class="controls-bar">
-          <button id="toggle-controls" class="ghost" aria-expanded="false" aria-controls="control-board">Controls</button>
+        <div class="header-actions">
+          <div class="status-pill"><span></span> Retrieval enabled</div>
+          <button id="toggle-controls" class="ghost" aria-expanded="false" aria-controls="control-board">Settings</button>
         </div>
       </header>
+
+      <section class="hero" aria-label="Workspace overview">
+        <div>
+          <p class="section-kicker">Secure document intelligence</p>
+          <h2>Ask precise questions across your indexed knowledge base.</h2>
+        </div>
+        <div class="hero-metrics" aria-label="Workspace capabilities">
+          <div><strong>RAG</strong><span>Grounded answers</span></div>
+          <div><strong>Top-K</strong><span>Tunable retrieval</span></div>
+          <div><strong>Sources</strong><span>Evidence panel</span></div>
+        </div>
+      </section>
 
       <section id="control-board" class="control-board" aria-label="Control Board">
         <div class="controls-bar">
@@ -47,20 +60,21 @@
             <span id="llm-key-label">API Key</span>
             <input id="llm-key" type="password" placeholder="Enter API Key" autocomplete="off" />
           </label>
-          <button id="clear" class="ghost" title="Clear conversation">Clear</button>
+          <button id="clear" class="ghost danger" title="Clear conversation">Clear conversation</button>
         </div>
       </section>
 
       <div class="main">
         <main id="messages" class="messages" aria-live="polite" aria-label="Chat messages"></main>
         <aside id="sources" class="sidebar" aria-label="Retrieved sources">
-          <div class="sidebar-title">Sources</div>
+          <div class="sidebar-title">Retrieved Sources</div>
+          <p class="sidebar-copy">Evidence from the latest answer appears here for review and traceability.</p>
           <div id="sources-list" class="sources-list"></div>
         </aside>
       </div>
 
       <form id="composer" class="composer">
-        <textarea id="prompt" rows="1" placeholder="Ask anything... (Shift+Enter for newline)"></textarea>
+        <textarea id="prompt" rows="1" placeholder="Ask a question about your indexed documents..."></textarea>
         <button id="send" type="submit">Send</button>
       </form>
 

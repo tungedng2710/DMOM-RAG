@@ -114,7 +114,7 @@ function renderSources(contexts = []) {
   if (!contexts || !contexts.length) {
     const empty = document.createElement('div');
     empty.className = 'source-card';
-    empty.textContent = 'No sources for this answer.';
+    empty.textContent = 'Sources will appear here after an answer is generated.';
     sourcesListEl.appendChild(empty);
     return;
   }
@@ -125,7 +125,7 @@ function renderSources(contexts = []) {
     head.className = 'source-head';
     const id = hit.id ?? '';
     const dist = (hit.distance ?? '').toString().slice(0, 6);
-    head.textContent = `Context ${i+1} • id=${id} • d=${dist}`;
+    head.textContent = `Source ${i+1} • id=${id} • score=${dist}`;
     const body = document.createElement('div');
     body.className = 'source-body';
     body.textContent = hit.document || '';
@@ -351,7 +351,7 @@ form.addEventListener('submit', handleSend);
 clearBtn.addEventListener('click', () => {
   state.messages = [];
   messagesEl.innerHTML = '';
-  renderMessage({ role: 'assistant', content: 'Hi! Ask me anything.' });
+  renderMessage({ role: 'assistant', content: 'Conversation cleared. Ask a question about your indexed documents.' });
 });
 
 // Global Sources toggle shows/hides the sidebar
@@ -376,4 +376,4 @@ async function typewriter(container, text) {
 }
 
 // Initial bot message
-renderMessage({ role: 'assistant', content: 'Hello! I can answer questions using your indexed data. Type a question below.' });
+renderMessage({ role: 'assistant', content: 'Welcome to DMOM RAG Workspace. Ask a question and I will answer using your indexed data, with sources shown on the right.' });
