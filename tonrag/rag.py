@@ -42,21 +42,18 @@ class RAGPipeline:
     def __init__(
         self,
         top_k: Optional[int] = None,
-        llm: Optional[str] = None,
-        api_key: Optional[str] = None,
-        gemini_api_key: Optional[str] = None,
     ):
         self.emb = get_default_embeddings()
         self.store = ChromaStore(create_if_missing=False)
-        # Accept a generic API key override (Gemini legacy alias kept for compatibility)
-        key_override = api_key or gemini_api_key
-        self.chat = get_default_chat(llm, api_key=key_override)
+        self.chat = get_default_chat()
         self.top_k = top_k or settings.top_k
 
     def retrieve(self, query: str, top_k: Optional[int] = None):
         k = top_k or self.top_k
         mode = (settings.chroma_query_mode or "auto").lower()
-        if mode in ("text", "auto"):
+        if mode == "text":
+            return self.store.query_text(query, top_k=k)
+        if mode == "auto":
             try:
                 return self.store.query_text(query, top_k=k)
             except Exception:

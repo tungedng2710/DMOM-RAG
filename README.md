@@ -2,7 +2,7 @@
 
 Official Code for the Paper [VPHQA_ VIETNAMESE PREGNANCY HEALTH QUESTION ANSWERING DATASET](https://idl-bnc-idrc.dspacedirect.org/server/api/core/bitstreams/0c6bede1-44cc-423f-b35e-4efde1f1faa4/content)
 
-This project builds a Retrieval Augmented Generation (RAG) pipeline over the `tungedng2710/Dmom_dataset` dataset using a local vector database (Chroma) and an Ollama-served LLM.
+This project builds a Retrieval Augmented Generation (RAG) pipeline over the `tungedng2710/Dmom_dataset` dataset using a local vector database (Chroma) and GLM 5.3 served through an OpenAI-compatible vLLM endpoint.
 
 Demo
 ![Chat Demo](app/static/demo.png)
@@ -10,13 +10,14 @@ Demo
 Key choices:
 - Vector DB: Chroma (local persistent store)
 - Embeddings: via Ollama `/api/embeddings` (default: `bge-m3:latest`)
-- Generator: selectable — Ollama `/api/chat`, Google Gemini REST, or Cerebras Cloud
+- Generator: GLM 5.3 (`glm53-flash`) through vLLM
 - Dataset: `tungedng2710/Dmom_dataset` (fetched with `datasets`)
 
 Prerequisites
 - Python 3.9+
 - `pip`
-- Ollama installed and running, reachable at `http://localhost:7860`
+- Ollama installed and running at `http://localhost:7860` for embeddings
+- Access to the configured GLM 5.3 vLLM endpoint
 
 Install Ollama
 - Linux:
@@ -36,7 +37,6 @@ Verify Ollama
 - `curl http://localhost:7860/api/tags` should return JSON (empty if no models yet).
 
 Pull required models
-- Generation (Ollama): `ollama pull gpt-oss:20b`
 - Embeddings (default `bge-m3:latest`):
   - `ollama pull bge-m3:latest`
 
@@ -47,16 +47,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Configure (optional)
+Configure
 - Copy `.env.example` to `.env` and adjust values.
 - Defaults:
   - `OLLAMA_BASE_URL=http://localhost:7860`
-  - `GENERATION_MODEL=gpt-oss:20b`
+  - `VLLM_BASE_URL=http://171.232.252.135:31585/v1`
+  - `VLLM_MODEL=glm53-flash`
+  - `VLLM_API_KEY=<bearer token>`
   - `EMBEDDING_MODEL=bge-m3:latest`
-  - `CHROMA_DIR=./data/chroma`
-  - `CHAT_BACKEND=ollama` (set to `gemini` or `cerebras` to switch cloud providers)
-  - For Gemini: set `GEMINI_API_KEY` and optionally `GEMINI_MODEL` (e.g., `gemini-1.5-flash`)
-  - For Cerebras: set `CEREBRAS_API_KEY` and optionally `CEREBRAS_MODEL` (e.g., `llama-4-scout-17b-16e-instruct`)
+  - `CHROMA_DIR=./data/chroma_dmom`
+  - `CHROMA_COLLECTION=dmom_qa`
 
 Commands
 
@@ -94,12 +94,6 @@ python -m tonrag.cli query \
   --top-k 5
 ```
 
-Use Gemini or Cerebras instead of Ollama for this run:
-```
-python -m tonrag.cli query --question "<your question>" --llm gemini
-python -m tonrag.cli query --question "<your question>" --llm cerebras
-```
-
 4) Evaluate on the dataset (quick lexical match)
 ```
 # CSV example
@@ -123,7 +117,7 @@ python -m tonrag.cli eval \
 Project Structure
 - `tonrag/config.py` – environment/config defaults
 - `tonrag/embeddings.py` – Ollama embeddings client; ST fallback if available
-- `tonrag/llm.py` – Ollama chat client (non-streaming)
+- `tonrag/llm.py` – OpenAI-compatible GLM 5.3 vLLM client
 - `tonrag/vectorstore.py` – Chroma wrapper
 - `tonrag/dataset.py` – dataset utilities and column auto-detection
 - `tonrag/chunking.py` – simple text chunker
@@ -134,7 +128,7 @@ Project Structure
 
 Troubleshooting
 - If embeddings fail, ensure the embedding model is pulled and available in Ollama: `ollama pull bge-m3:latest`.
-- If generation fails, ensure `gpt-oss:20b` is available: `ollama pull gpt-oss:20b`.
+- If generation fails, verify `VLLM_BASE_URL`, `VLLM_MODEL`, and `VLLM_API_KEY`.
 - If dataset download fails, ensure your environment has internet access and the `datasets` package can reach Hugging Face.
 
 Web App
@@ -142,19 +136,35 @@ Web App
 - Open: `http://localhost:7865`
 - Endpoints:
   - `GET /` – serves UI
-  - `POST /api/chat` – body: `{ "message": "...", "top_k": 5, "llm": "ollama|gemini|cerebras", "llm_api_key": "optional" }`
+  - `POST /api/chat` – body: `{ "message": "...", "top_k": 5 }`
   - `GET /health`
 - The app uses the same RAG pipeline and Chroma store.
+
+Docker Compose
+```
+# Ensure .env contains VLLM_API_KEY and data/chroma_dmom has been built with
+# `python scripts/build_vector_db.py`.
+docker compose up --build -d
+
+# Check status and follow logs.
+docker compose ps
+docker compose logs -f app
+```
+
+Open `http://localhost:7865`. Stop the service with `docker compose down`.
+The container uses `requirements.docker.txt`; offline ingestion and evaluation
+dependencies remain in `requirements.txt` and are not added to the runtime image.
+Docker Compose keeps Chroma's local ONNX embedding model in a named volume so it
+is downloaded only once. The container uses `CHROMA_QUERY_MODE=text`, so it does
+not require an Ollama service for queries.
 
 Legacy stdlib server (optional): `python app/server.py --port 7865`
 
 Chat UI
-- Clean bubble layout with avatars, typing indicator, and copy buttons.
-- Collapsible “Contexts” under each assistant message to inspect retrieved sources.
-- Shift+Enter for newline, Enter to send, clear chat, adjustable Top‑K.
+- Responsive three-panel workspace with evidence cards, status, and copy actions.
+- Shift+Enter for newline, Enter to send, clear chat, and adjustable Top-K.
 - Answers render Markdown (headings, lists, links, code blocks) safely in the UI.
 - CLI: add `--strip-markdown` to print plain‑text answers.
- - LLM selector in the header to switch between Ollama, Gemini, or Cerebras per request.
 
 License
 - For this template, no explicit license is added; adapt as needed.

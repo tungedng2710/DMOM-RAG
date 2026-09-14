@@ -1,0 +1,5 @@
+chromadb==1.0.20
+requests
+python-dotenv
+fastapi
+uvicorn

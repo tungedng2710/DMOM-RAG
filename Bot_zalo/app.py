@@ -11,7 +11,7 @@ PROJECT_ROOT = os.path.dirname(BOT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from tonrag.llm import CerebrasChat, GeminiChat, get_default_chat  # noqa: E402
+from tonrag.llm import get_default_chat  # noqa: E402
 from config import Config
 from utils import send_message
 
@@ -35,61 +35,21 @@ SYSTEM_PROMPT = (
 )
 
 _chat_client: Optional[object] = None
-_chat_backend: Optional[str] = None
 _chat_initialization_error: Optional[str] = None
-
-
-def _resolve_backend() -> str:
-    """Determine which chat backend to use for the bot."""
-    raw = (
-        os.getenv("ZALO_CHAT_BACKEND")
-        or os.getenv("CHAT_BACKEND")
-        or "gemini"
-    )
-    choice = (raw or "").strip().lower()
-    if choice.startswith("ollama"):
-        return "ollama"
-    if choice.startswith("cerebras"):
-        return "cerebras"
-    if choice.startswith("gemini"):
-        return "gemini"
-    return "gemini"
-
-
-def _resolve_api_key(backend: str) -> Optional[str]:
-    env_map = {
-        "gemini": "GEMINI_API_KEY",
-        "cerebras": "CEREBRAS_API_KEY",
-    }
-    env_name = env_map.get(backend)
-    if not env_name:
-        return None
-    value = (os.getenv(env_name, "") or "").strip()
-    return value or None
 
 
 def get_chat_client() -> Optional[object]:
     """Lazy-load the chat client for reuse across requests."""
-    global _chat_client, _chat_backend, _chat_initialization_error
-    backend = _resolve_backend()
-    needs_refresh = (_chat_client is None) or (_chat_backend != backend)
-    if needs_refresh or _chat_initialization_error is not None:
+    global _chat_client, _chat_initialization_error
+    if _chat_client is None or _chat_initialization_error is not None:
         try:
-            api_key_override = _resolve_api_key(backend)
-            _chat_client = get_default_chat(backend, api_key=api_key_override)
-            if isinstance(_chat_client, GeminiChat):
-                _chat_backend = "gemini"
-            elif isinstance(_chat_client, CerebrasChat):
-                _chat_backend = "cerebras"
-            else:
-                _chat_backend = "ollama"
+            _chat_client = get_default_chat()
             _chat_initialization_error = None
-            logger.info("Initialized chat backend '%s' for Zalo bot responses.", backend)
+            logger.info("Initialized GLM 5.3 vLLM client for Zalo bot responses.")
         except Exception as exc:  # pragma: no cover - defensive
             _chat_client = None
-            _chat_backend = backend
             _chat_initialization_error = str(exc)
-            logger.exception("Failed to initialize chat backend '%s': %s", backend, exc)
+            logger.exception("Failed to initialize GLM 5.3 vLLM client: %s", exc)
     return _chat_client
 
 
@@ -146,11 +106,9 @@ def webhook():
         logger.info(f'User ID: {user_id}, Message: {message_text}')
 
         chat = get_chat_client()
-        backend_name = _chat_backend or _resolve_backend()
         if chat is None:
             logger.error(
-                "Chat backend '%s' chưa sẵn sàng: %s",
-                backend_name,
+                "GLM 5.3 vLLM chưa sẵn sàng: %s",
                 _chat_initialization_error or "unknown error",
             )
             reply = 'Xin lỗi, hệ thống đang bận. Bạn thử lại sau nhé!'
@@ -163,9 +121,9 @@ def webhook():
             ]
             try:
                 reply = chat.generate(messages, system=SYSTEM_PROMPT) or ''
-                logger.info("Sinh phản hồi thành công bằng backend '%s'.", backend_name)
+                logger.info("Sinh phản hồi thành công bằng GLM 5.3 vLLM.")
             except Exception as exc:  # pragma: no cover - defensive
-                logger.exception("Lỗi khi gọi backend '%s': %s", backend_name, exc)
+                logger.exception("Lỗi khi gọi GLM 5.3 vLLM: %s", exc)
                 reply = ''
 
         if not reply:

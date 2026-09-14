@@ -38,10 +38,9 @@ def main():
 
     os.makedirs(DB_PATH, exist_ok=True)
 
-    # Embedding function (local, no API key required)
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
-    )
+    # Chroma's portable ONNX MiniLM embedding function is available in both the
+    # local development environment and the minimal Docker runtime.
+    ef = embedding_functions.DefaultEmbeddingFunction()
 
     client = chromadb.PersistentClient(path=DB_PATH)
 
@@ -113,4 +112,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

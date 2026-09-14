@@ -13,6 +13,9 @@ ZALO_BOT_TOKEN=your_bot_token_here
 `
 ZALO_BOT_WEBHOOK_SECRET=your_secret_key_here
 DEBUG=true
+VLLM_BASE_URL=http://171.232.252.135:31585/v1
+VLLM_MODEL=glm53-flash
+VLLM_API_KEY=your_bearer_token
 `
 
 

@@ -12,7 +12,9 @@ build
 node_modules
 .DS_Store
 .envrc
+.env
 .idea
 .vscode
 *.egg-info
 *.egg
+data/

@@ -8,23 +8,14 @@ load_dotenv()
 
 @dataclass
 class Settings:
-    # Ollama / API
+    # Ollama is retained only for retrieval embeddings.
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:7860")
-    generation_model: str = os.getenv("GENERATION_MODEL", "gpt-oss:20b")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "bge-m3:latest")
 
-    # Gemini / API
-    # Default to public Google Generative Language API v1 endpoint
-    gemini_base_url: str = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1")
-    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-
-    # Cerebras / API
-    cerebras_api_key: str = os.getenv("CEREBRAS_API_KEY", "")
-    cerebras_model: str = os.getenv("CEREBRAS_MODEL", "llama-4-scout-17b-16e-instruct")
-
-    # Default chat backend: 'ollama', 'gemini', or 'cerebras'
-    chat_backend: str = os.getenv("CHAT_BACKEND", "ollama")
+    # The only supported generation backend: GLM 5.3 served by vLLM.
+    vllm_base_url: str = os.getenv("VLLM_BASE_URL", "http://171.232.252.135:31585/v1")
+    vllm_api_key: str = os.getenv("VLLM_API_KEY", "")
+    vllm_model: str = os.getenv("VLLM_MODEL", "glm53-flash")
 
     # Vector store
     # Default to the DB built by scripts/build_vector_db.py

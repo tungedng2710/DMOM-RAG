@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import sys
 import textwrap
 from typing import List, Dict, Any, Tuple
 
 import chromadb
 from chromadb.utils import embedding_functions
+
+# Allow direct execution with `python scripts/rag_qa.py`.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from tonrag.llm import get_default_chat
 
 
 DB_PATH = os.path.join("data", "chroma_dmom")
@@ -28,9 +36,7 @@ def parse_chunk(doc: str) -> Dict[str, str]:
 
 
 def retrieve(query: str, k: int) -> Dict[str, Any]:
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
-    )
+    ef = embedding_functions.DefaultEmbeddingFunction()
     client = chromadb.PersistentClient(path=DB_PATH)
     coll = client.get_collection(name=COLLECTION_NAME, embedding_function=ef)
     return coll.query(query_texts=[query], n_results=k)
@@ -76,37 +82,11 @@ def build_context(res: Dict[str, Any], max_chars: int = 3000) -> Tuple[str, List
     return context, ref_items
 
 
-def generate_openai(prompt: str, model: str = None) -> str:
-    # Uses OpenAI if OPENAI_API_KEY is present
-    from openai import OpenAI
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY not set")
-
-    client = OpenAI(api_key=api_key)
-    model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": "Bạn là bác sĩ trả lời câu hỏi y khoa một cách chính xác, súc tích, và có trích dẫn nguồn."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.2,
-        max_tokens=512,
+def generate_glm(prompt: str) -> str:
+    return get_default_chat().generate(
+        [{"role": "user", "content": prompt}],
+        system="Bạn là bác sĩ trả lời câu hỏi y khoa một cách chính xác, súc tích, và có trích dẫn nguồn.",
     )
-    return (resp.choices[0].message.content or "").strip()
-
-
-def generate_transformers(prompt: str, model_name: str = None) -> str:
-    # Lightweight local generation; defaults to a multilingual T5
-    # Requires: transformers + torch (CPU is fine but slower)
-    from transformers import pipeline
-
-    model_name = model_name or os.getenv("RAG_MODEL", "google/mt5-small")
-    pipe = pipeline("text2text-generation", model=model_name, device=-1)
-    out = pipe(prompt, max_new_tokens=256, do_sample=False)
-    return (out[0].get("generated_text") or "").strip()
 
 
 def main():
@@ -114,8 +94,6 @@ def main():
     parser.add_argument("query", type=str, help="User question (Vietnamese supported)")
     parser.add_argument("--k", type=int, default=5, help="Top-k documents to retrieve")
     parser.add_argument("--max-context", type=int, default=3000, help="Max characters in context")
-    parser.add_argument("--llm", choices=["openai", "transformers", "none"], default="none", help="Generation backend")
-    parser.add_argument("--model", type=str, default=None, help="Override model (OpenAI or HF)")
     args = parser.parse_args()
 
     # Retrieve
@@ -137,16 +115,10 @@ def main():
     ).strip()
 
     answer = None
-    if args.llm == "openai":
-        try:
-            answer = generate_openai(prompt, model=args.model)
-        except Exception as e:
-            print(f"[warn] OpenAI generation failed: {e}")
-    elif args.llm == "transformers":
-        try:
-            answer = generate_transformers(prompt, model_name=args.model)
-        except Exception as e:
-            print(f"[warn] Transformers generation failed: {e}")
+    try:
+        answer = generate_glm(prompt)
+    except Exception as e:
+        print(f"[warn] GLM 5.3 generation failed: {e}")
 
     # Fallback: simple retrieval answer (top doc's answer)
     if not answer:
@@ -172,4 +144,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

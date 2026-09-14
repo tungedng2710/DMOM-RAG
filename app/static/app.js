@@ -1,379 +1,310 @@
+const shellEl = document.getElementById('app-shell');
 const messagesEl = document.getElementById('messages');
-const form = document.getElementById('composer');
+const welcomeEl = document.getElementById('welcome');
+const formEl = document.getElementById('composer');
 const promptEl = document.getElementById('prompt');
 const sendBtn = document.getElementById('send');
 const topkEl = document.getElementById('topk');
 const clearBtn = document.getElementById('clear');
-const llmEl = document.getElementById('llm');
 const sourcesToggleEl = document.getElementById('toggle-sources');
-const sourcesPanelEl = document.getElementById('sources');
 const sourcesListEl = document.getElementById('sources-list');
-const controlsBtn = document.getElementById('toggle-controls');
-const controlBoardEl = document.getElementById('control-board');
-const llmKeyRow = document.getElementById('llm-key-row');
-const llmKeyLabel = document.getElementById('llm-key-label');
-const llmKeyInput = document.getElementById('llm-key');
+const sourceCountEl = document.getElementById('source-count');
+const mobileSourcesBtn = document.getElementById('mobile-sources');
+const closeSourcesBtn = document.getElementById('close-sources');
+const panelOverlayEl = document.getElementById('panel-overlay');
 
-const state = {
-  messages: [], // { role: 'user'|'assistant', content: string, contexts?: [] }
-};
+const state = { messages: [] };
 
-function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+}
 
-// Minimal Markdown → HTML converter with sanitization
-function mdToHtml(md) {
-  if (!md) return '';
-  // Normalize newlines
-  md = md.replace(/\r\n?/g, '\n');
-
-  // Code blocks ```lang\n...```
-  md = md.replace(/```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g, (m, lang, code) => {
-    const safe = escapeHtml(code);
-    const cls = lang ? ` class="lang-${escapeHtml(lang)}"` : '';
-    return `<pre><code${cls}>${safe}</code></pre>`;
-  });
-
-  // Headings
-  md = md.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
-         .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
-         .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
-
-  // Bold and italic (basic)
-  md = md.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-         .replace(/__([^_]+)__/g, '<strong>$1</strong>')
-         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-         .replace(/_([^_]+)_/g, '<em>$1</em>');
-
-  // Inline code
-  md = md.replace(/`([^`]+)`/g, (m, code) => `<code>${escapeHtml(code)}</code>`);
-
-  // Links [text](url)
-  md = md.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, text, url) => {
-    const t = escapeHtml(text);
-    const u = escapeHtml(url);
-    return `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`;
-  });
-
-  // Lists (very simple, contiguous lines starting - or * or 1.)
-  md = md.replace(/(?:^|\n)([-*] .*(?:\n[-*] .*)+)/g, (m) => {
-    const items = m.trim().split(/\n/).map(l => l.replace(/^[-*]\s+/, '').trim());
-    return '\n<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
-  });
-  md = md.replace(/(?:^|\n)((?:\d+\. .*(?:\n\d+\. .*)+))/g, (m, grp) => {
-    const items = grp.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '').trim());
-    return '\n<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
-  });
-
-  // Paragraphs: wrap loose lines not already HTML blocks
-  const lines = md.split(/\n{2,}/);
-  md = lines.map(block => {
-    const trimmed = block.trim();
-    if (!trimmed) return '';
-    // If starts with a block tag, keep as-is
-    if (/^<(h\d|ul|ol|li|pre|blockquote|p|table|code)/i.test(trimmed)) return trimmed;
-    return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
-  }).join('\n');
-
-  return sanitizeHtml(md);
+function isSafeUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ['http:', 'https:', 'mailto:'].includes(parsed.protocol);
+  } catch (_) {
+    return false;
+  }
 }
 
 function sanitizeHtml(html) {
-  const allowed = new Set(['A','P','BR','STRONG','EM','CODE','PRE','H1','H2','H3','UL','OL','LI']);
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
-  const walk = (node) => {
-    const children = Array.from(node.childNodes);
-    for (const child of children) {
-      if (child.nodeType === 1) { // element
-        if (!allowed.has(child.tagName)) {
-          // Replace disallowed element with its textContent
-          const text = document.createTextNode(child.textContent || '');
-          node.replaceChild(text, child);
-          continue;
-        }
-        // Clean attributes
-        for (const attr of Array.from(child.attributes)) {
-          const name = attr.name.toLowerCase();
-          if (child.tagName === 'A' && (name === 'href' || name === 'target' || name === 'rel')) continue;
-          if (child.tagName === 'CODE' && name === 'class') continue;
-          child.removeAttribute(attr.name);
-        }
-        walk(child);
-      } else if (child.nodeType === 8) { // comment
-        node.removeChild(child);
+  const allowed = new Set(['A', 'P', 'BR', 'STRONG', 'EM', 'CODE', 'PRE', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'SPAN']);
+  const container = document.createElement('div');
+  container.innerHTML = html;
+
+  function walk(node) {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType === Node.COMMENT_NODE) {
+        child.remove();
+        return;
       }
-    }
-  };
-  walk(temp);
-  return temp.innerHTML;
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      if (!allowed.has(child.tagName)) {
+        child.replaceWith(document.createTextNode(child.textContent || ''));
+        return;
+      }
+      Array.from(child.attributes).forEach((attribute) => {
+        const keepLinkAttribute = child.tagName === 'A' && ['href', 'target', 'rel'].includes(attribute.name);
+        const keepCodeClass = child.tagName === 'CODE' && attribute.name === 'class';
+        const keepCitationClass = child.tagName === 'SPAN' && attribute.name === 'class' && attribute.value === 'citation';
+        if (!keepLinkAttribute && !keepCodeClass && !keepCitationClass) child.removeAttribute(attribute.name);
+      });
+      if (child.tagName === 'A' && !isSafeUrl(child.getAttribute('href') || '')) {
+        child.removeAttribute('href');
+        child.removeAttribute('target');
+        child.removeAttribute('rel');
+      }
+      walk(child);
+    });
+  }
+
+  walk(container);
+  return container.innerHTML;
+}
+
+function mdToHtml(markdown) {
+  if (!markdown) return '';
+  const codeBlocks = [];
+  let text = String(markdown).replace(/\r\n?/g, '\n');
+  text = text.replace(/```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g, (_, language, code) => {
+    const token = `@@DMOM_CODE_${codeBlocks.length}@@`;
+    const className = language ? ` class="lang-${escapeHtml(language)}"` : '';
+    codeBlocks.push(`<pre><code${className}>${escapeHtml(code)}</code></pre>`);
+    return token;
+  });
+
+  text = escapeHtml(text)
+    .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+    .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/\[(\d+)\]/g, '<span class="citation">[$1]</span>');
+
+  text = text.replace(/(?:^|\n)((?:[-*]\s+.*(?:\n|$))+)/g, (_, group) => {
+    const items = group.trim().split('\n').map((line) => line.replace(/^[-*]\s+/, ''));
+    return `\n<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>\n`;
+  });
+  text = text.replace(/(?:^|\n)((?:\d+\.\s+.*(?:\n|$))+)/g, (_, group) => {
+    const items = group.trim().split('\n').map((line) => line.replace(/^\d+\.\s+/, ''));
+    return `\n<ol>${items.map((item) => `<li>${item}</li>`).join('')}</ol>\n`;
+  });
+
+  text = text.split(/\n{2,}/).map((block) => {
+    const trimmed = block.trim();
+    if (!trimmed) return '';
+    if (/^(<h\d|<ul|<ol|<pre|@@DMOM_CODE_)/i.test(trimmed)) return trimmed;
+    return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
+  }).join('\n');
+
+  codeBlocks.forEach((block, index) => {
+    text = text.replace(`@@DMOM_CODE_${index}@@`, block);
+  });
+  return sanitizeHtml(text);
+}
+
+function scrollToLatest() {
+  requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
+}
+
+function copyIcon() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+}
+
+function renderMessage(message) {
+  welcomeEl.classList.add('hidden');
+  const row = document.createElement('article');
+  row.className = `message ${message.role}${message.error ? ' error' : ''}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = message.role === 'user' ? 'BẠN' : 'AI';
+
+  const body = document.createElement('div');
+  body.className = 'message-body';
+  const meta = document.createElement('div');
+  meta.className = 'message-meta';
+  meta.innerHTML = message.role === 'user'
+    ? '<span>Bạn</span>'
+    : '<span>DMOM Assistant</span><span class="model-mini">GLM 5.3</span>';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  const content = document.createElement('div');
+  content.className = 'content';
+  if (message.role === 'assistant') content.innerHTML = mdToHtml(message.content || '');
+  else content.innerHTML = escapeHtml(message.content || '').replace(/\n/g, '<br>');
+  bubble.appendChild(content);
+  body.append(meta, bubble);
+
+  if (message.role === 'assistant' && !message.error) {
+    const copy = document.createElement('button');
+    copy.className = 'copy-button';
+    copy.type = 'button';
+    copy.innerHTML = `${copyIcon()}<span>Sao chép</span>`;
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(message.content || '');
+        copy.querySelector('span').textContent = 'Đã sao chép';
+        setTimeout(() => { copy.querySelector('span').textContent = 'Sao chép'; }, 1400);
+      } catch (_) {
+        copy.querySelector('span').textContent = 'Không thể sao chép';
+      }
+    });
+    body.appendChild(copy);
+  }
+
+  if (message.role === 'user') row.append(body, avatar);
+  else row.append(avatar, body);
+  messagesEl.appendChild(row);
+  scrollToLatest();
+  return row;
+}
+
+function addTyping() {
+  const row = document.createElement('article');
+  row.className = 'message assistant';
+  row.innerHTML = `
+    <div class="avatar">AI</div>
+    <div class="message-body">
+      <div class="message-meta"><span>DMOM Assistant</span><span class="model-mini">GLM 5.3</span></div>
+      <div class="bubble"><div class="typing" aria-label="Đang tạo câu trả lời"><span></span><span></span><span></span></div></div>
+    </div>`;
+  messagesEl.appendChild(row);
+  scrollToLatest();
+  return row;
 }
 
 function renderSources(contexts = []) {
-  if (!sourcesListEl) return;
   sourcesListEl.innerHTML = '';
-  if (!contexts || !contexts.length) {
-    const empty = document.createElement('div');
-    empty.className = 'source-card';
-    empty.textContent = 'Sources will appear here after an answer is generated.';
-    sourcesListEl.appendChild(empty);
+  sourceCountEl.textContent = String(contexts.length);
+  if (!contexts.length) {
+    sourcesListEl.innerHTML = `
+      <div class="sources-empty">
+        <span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 5h16a3 3 0 0 1 3 3v19H9a3 3 0 0 1-3-3V5Zm0 19a3 3 0 0 1 3-3h16M11 11h9M11 15h7" /></svg></span>
+        <strong>Chưa có nguồn được truy xuất</strong>
+        <p>Nguồn liên quan sẽ xuất hiện tại đây sau khi bạn đặt câu hỏi.</p>
+      </div>`;
     return;
   }
-  contexts.forEach((hit, i) => {
-    const card = document.createElement('div');
+
+  contexts.forEach((hit, index) => {
+    const card = document.createElement('article');
     card.className = 'source-card';
-    const head = document.createElement('div');
-    head.className = 'source-head';
-    const id = hit.id ?? '';
-    const dist = (hit.distance ?? '').toString().slice(0, 6);
-    head.textContent = `Source ${i+1} • id=${id} • score=${dist}`;
-    const body = document.createElement('div');
-    body.className = 'source-body';
-    body.textContent = hit.document || '';
-    card.appendChild(head);
-    card.appendChild(body);
+    const distance = Number(hit.distance);
+    const score = Number.isFinite(distance) ? distance.toFixed(3) : '—';
+    const sourceId = hit.id ? `ID ${hit.id}` : 'Dữ liệu DMOM';
+    card.innerHTML = `
+      <div class="source-head">
+        <span class="source-number">${index + 1}</span>
+        <span class="source-title" title="${escapeHtml(sourceId)}">${escapeHtml(sourceId)}</span>
+        <span class="source-score">d ${score}</span>
+      </div>
+      <div class="source-body"></div>
+      <button class="source-toggle" type="button">Xem thêm</button>`;
+    card.querySelector('.source-body').textContent = hit.document || '';
+    const toggle = card.querySelector('.source-toggle');
+    toggle.addEventListener('click', () => {
+      const expanded = card.classList.toggle('expanded');
+      toggle.textContent = expanded ? 'Thu gọn' : 'Xem thêm';
+    });
     sourcesListEl.appendChild(card);
   });
 }
 
-// Control board toggle
-if (controlsBtn && controlBoardEl) {
-  const toggle = () => {
-    const isOpen = controlBoardEl.classList.toggle('open');
-    controlsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-  };
-  controlsBtn.addEventListener('click', toggle);
-}
-
-// Show API key input only when a cloud backend is selected
-const LLM_KEY_STORAGE_PREFIX = 'llm_api_key_';
-
-function loadStoredKey(choice) {
-  try {
-    return localStorage.getItem(LLM_KEY_STORAGE_PREFIX + choice) || '';
-  } catch (e) {
-    return '';
-  }
-}
-
-function updateLlmKeyVisibility() {
-  if (!llmEl || !llmKeyRow) return;
-  const choice = (llmEl.value || '').toLowerCase();
-  let label = 'API Key';
-  let show = false;
-
-  if (choice === 'gemini') {
-    show = true;
-    label = 'Gemini Key';
-  } else if (choice === 'cerebras') {
-    show = true;
-    label = 'Cerebras Key';
-  }
-
-  llmKeyRow.style.display = show ? '' : 'none';
-  if (llmKeyLabel) {
-    llmKeyLabel.textContent = label;
-  }
-  if (llmKeyInput) {
-    if (choice === 'gemini') {
-      llmKeyInput.placeholder = 'Enter Gemini API Key';
-    } else if (choice === 'cerebras') {
-      llmKeyInput.placeholder = 'Enter Cerebras API Key';
-    } else {
-      llmKeyInput.placeholder = 'Enter API Key';
-    }
-  }
-  if (show && llmKeyInput) {
-    const stored = loadStoredKey(choice);
-    if (stored && llmKeyInput.value !== stored) {
-      llmKeyInput.value = stored;
-    } else if (!stored && !llmKeyInput.value) {
-      llmKeyInput.value = '';
-    }
-  }
-}
-
-if (llmEl) {
-  llmEl.addEventListener('change', updateLlmKeyVisibility);
-  // initialize
-  updateLlmKeyVisibility();
-}
-
-if (llmKeyInput) {
-  llmKeyInput.addEventListener('input', () => {
-    if (!llmEl) return;
-    const choice = (llmEl.value || '').toLowerCase();
-    if (!choice) return;
-    try {
-      localStorage.setItem(LLM_KEY_STORAGE_PREFIX + choice, llmKeyInput.value || '');
-    } catch (e) {}
+async function sendPrompt(question) {
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: question, top_k: Number(topkEl.value || 5) })
   });
-}
-
-function renderMessage(msg) {
-  const row = document.createElement('div');
-  row.className = `message ${msg.role}`;
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar';
-  avatar.textContent = msg.role === 'user' ? 'U' : 'A';
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-
-  // Content container for typewriter effect
-  const content = document.createElement('div');
-  content.className = 'content';
-  // Render markdown to sanitized HTML for assistant; plain text for user
-  if (msg.role === 'assistant') {
-    content.innerHTML = mdToHtml(msg.content || '');
-  } else {
-    content.innerHTML = escapeHtml(msg.content || '').replace(/\n/g, '<br>');
-  }
-  bubble.appendChild(content);
-
-  // Removed per-message tools (Copy, Sources)
-
-  // Contexts are displayed in the right sidebar, not within the message bubble
-
-  if (msg.role === 'user') {
-    // Right side: show bubble before avatar
-    row.appendChild(bubble);
-    row.appendChild(avatar);
-  } else {
-    // Left side: show avatar then bubble
-    row.appendChild(avatar);
-    row.appendChild(bubble);
-  }
-  messagesEl.appendChild(row);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  return content; // return content el for typing animation
-}
-
-function addTyping() {
-  const row = document.createElement('div');
-  row.className = 'message assistant';
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar';
-  avatar.textContent = 'A';
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  const dotWrap = document.createElement('div');
-  dotWrap.className = 'typing';
-  dotWrap.innerHTML = '<span></span><span></span><span></span>';
-  bubble.appendChild(dotWrap);
-  row.appendChild(avatar);
-  row.appendChild(bubble);
-  messagesEl.appendChild(row);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  return row;
-}
-
-function removeEl(el) { if (el && el.parentNode) el.parentNode.removeChild(el); }
-
-async function sendPrompt(q) {
-  const llmChoice = llmEl ? (llmEl.value || '').toLowerCase() : undefined;
-  const shouldIncludeKey = llmKeyRow && llmKeyRow.style.display !== 'none';
-  const keyValue = shouldIncludeKey && llmKeyInput ? (llmKeyInput.value || '').trim() : '';
-  const payload = {
-    message: q,
-    top_k: Number(topkEl.value || 5),
-    llm: llmChoice || undefined,
-  };
-  if (llmChoice && (llmChoice === 'gemini' || llmChoice === 'cerebras')) {
-    if (keyValue) {
-      payload.llm_api_key = keyValue;
-      if (llmChoice === 'gemini') {
-        payload.gemini_api_key = keyValue;
-      } else if (llmChoice === 'cerebras') {
-        payload.cerebras_api_key = keyValue;
-      }
-    }
-  }
-  const res = await fetch('/api/chat', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || data.error || 'Request failed');
+  let data = {};
+  try { data = await response.json(); } catch (_) { /* handled below */ }
+  if (!response.ok) throw new Error(data.detail || data.error || 'Không thể kết nối đến hệ thống.');
   return data;
 }
 
-async function handleSend(ev) {
-  ev && ev.preventDefault();
-  const q = (promptEl.value || '').trim();
-  if (!q) return;
+async function handleSend(event, suggestedPrompt) {
+  if (event) event.preventDefault();
+  const question = String(suggestedPrompt || promptEl.value || '').trim();
+  if (!question || sendBtn.disabled) return;
+
   sendBtn.disabled = true;
-
-  // Render user
-  state.messages.push({ role: 'user', content: q });
-  renderMessage({ role: 'user', content: q });
+  state.messages.push({ role: 'user', content: question });
+  renderMessage({ role: 'user', content: question });
   promptEl.value = '';
-  autoResize(promptEl);
-
-  // Typing indicator
+  autoResize();
   const typingRow = addTyping();
+
   try {
-    const data = await sendPrompt(q);
-    removeEl(typingRow);
-    const answer = data.answer || '(no answer)';
-    const hasMd = /```|\*\*|\[[^\]]+\]\([^\)]+\)|^#|<\w+/.test(answer);
-    const contentEl = renderMessage({ role: 'assistant', content: hasMd ? answer : '', contexts: data.contexts || [] });
-    if (hasMd) {
-      contentEl.innerHTML = mdToHtml(answer);
-    } else {
-      await typewriter(contentEl, answer);
-    }
-    state.messages.push({ role: 'assistant', content: answer , contexts: data.contexts || []});
-    // Show latest sources in the sidebar
+    const data = await sendPrompt(question);
+    typingRow.remove();
+    const answer = data.answer || 'Tôi chưa tìm thấy câu trả lời phù hợp trong kho tri thức.';
+    state.messages.push({ role: 'assistant', content: answer, contexts: data.contexts || [] });
+    renderMessage({ role: 'assistant', content: answer });
     renderSources(data.contexts || []);
-    if (sourcesPanelEl && sourcesToggleEl && sourcesToggleEl.checked) {
-      sourcesPanelEl.style.display = '';
-    }
-  } catch (err) {
-    removeEl(typingRow);
-    renderMessage({ role: 'assistant', content: 'Error: ' + (err.message || err) });
+  } catch (error) {
+    typingRow.remove();
+    renderMessage({
+      role: 'assistant',
+      error: true,
+      content: `Đã xảy ra lỗi khi xử lý câu hỏi. ${error.message || 'Vui lòng thử lại sau.'}`
+    });
   } finally {
     sendBtn.disabled = false;
+    promptEl.focus();
   }
 }
 
-function autoResize(ta) {
-  ta.style.height = 'auto';
-  ta.style.height = Math.min(180, Math.max(40, ta.scrollHeight)) + 'px';
+function autoResize() {
+  promptEl.style.height = 'auto';
+  promptEl.style.height = `${Math.min(150, Math.max(38, promptEl.scrollHeight))}px`;
 }
-promptEl.addEventListener('input', () => autoResize(promptEl));
-promptEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    handleSend(e);
+
+function openSources() {
+  shellEl.classList.add('panel-open');
+  mobileSourcesBtn.setAttribute('aria-expanded', 'true');
+}
+
+function closeSources() {
+  shellEl.classList.remove('panel-open');
+  mobileSourcesBtn.setAttribute('aria-expanded', 'false');
+}
+
+formEl.addEventListener('submit', handleSend);
+promptEl.addEventListener('input', autoResize);
+promptEl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    handleSend(event);
   }
 });
-form.addEventListener('submit', handleSend);
+
+document.querySelectorAll('[data-prompt]').forEach((button) => {
+  button.addEventListener('click', () => handleSend(null, button.dataset.prompt));
+});
 
 clearBtn.addEventListener('click', () => {
   state.messages = [];
-  messagesEl.innerHTML = '';
-  renderMessage({ role: 'assistant', content: 'Conversation cleared. Ask a question about your indexed documents.' });
+  messagesEl.querySelectorAll('.message').forEach((message) => message.remove());
+  welcomeEl.classList.remove('hidden');
+  renderSources([]);
+  promptEl.focus();
 });
 
-// Global Sources toggle shows/hides the sidebar
-if (sourcesToggleEl && sourcesPanelEl) {
-  sourcesPanelEl.style.display = sourcesToggleEl.checked ? '' : 'none';
-  sourcesToggleEl.addEventListener('change', () => {
-    sourcesPanelEl.style.display = sourcesToggleEl.checked ? '' : 'none';
-  });
-}
+sourcesToggleEl.addEventListener('change', () => {
+  shellEl.classList.toggle('sources-hidden', !sourcesToggleEl.checked);
+});
+mobileSourcesBtn.addEventListener('click', openSources);
+closeSourcesBtn.addEventListener('click', closeSources);
+panelOverlayEl.addEventListener('click', closeSources);
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeSources(); });
 
-async function typewriter(container, text) {
-  const delay = (ms) => new Promise(r => setTimeout(r, ms));
-  const escaped = escapeHtml(text).replace(/\n/g, '<br>');
-  container.innerHTML = '';
-  let i = 0;
-  while (i < escaped.length) {
-    container.innerHTML += escaped.slice(i, i + 3); // chunk few chars
-    i += 3;
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-    await delay(12);
-  }
-}
-
-// Initial bot message
-renderMessage({ role: 'assistant', content: 'Welcome to DMOM RAG Workspace. Ask a question and I will answer using your indexed data, with sources shown on the right.' });
+renderSources([]);

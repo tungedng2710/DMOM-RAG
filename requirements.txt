@@ -6,6 +6,5 @@ tqdm
 pandas==2.3.2
 fastapi
 uvicorn
-google-genai==1.36.0
 sentence-transformers==2.7.0
 sentencepiece==0.2.1

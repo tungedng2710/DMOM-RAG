@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Dict, List, Optional
+import threading
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # Ensure project root is importable when running `uvicorn app.main:app`
@@ -18,16 +19,15 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from tonrag.rag import RAGPipeline  # noqa: E402
-from tonrag.llm import CerebrasChat, GeminiChat  # noqa: E402
+from tonrag.config import settings  # noqa: E402
 
 
 class ChatRequest(BaseModel):
     message: str
-    top_k: Optional[int] = 5
-    llm: Optional[str] = None  # 'ollama' | 'gemini' | 'cerebras'
-    gemini_api_key: Optional[str] = None
-    cerebras_api_key: Optional[str] = None
-    llm_api_key: Optional[str] = None
+    top_k: int = Field(default=5, ge=1, le=10)
+
+    class Config:
+        extra = "forbid"
 
 class DebugRetrieveRequest(BaseModel):
     query: str
@@ -39,7 +39,7 @@ class DebugAnswerRequest(BaseModel):
 
 
 def make_app() -> FastAPI:
-    app = FastAPI(title="RAG Chatbot", version="0.1.0")
+    app = FastAPI(title="DMOM Health AI", version="2.0.0")
 
     app.add_middleware(
         CORSMiddleware,
@@ -53,7 +53,17 @@ def make_app() -> FastAPI:
     static_dir = os.path.join(APP_DIR, "static")
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-    rag = RAGPipeline()
+    rag: Optional[RAGPipeline] = None
+    rag_lock = threading.Lock()
+
+    def get_rag() -> RAGPipeline:
+        """Initialize the vector store on first use so the UI can start independently."""
+        nonlocal rag
+        if rag is None:
+            with rag_lock:
+                if rag is None:
+                    rag = RAGPipeline()
+        return rag
 
     @app.get("/")
     def index():
@@ -64,7 +74,7 @@ def make_app() -> FastAPI:
 
     @app.get("/health")
     def health():
-        return {"status": "ok"}
+        return {"status": "ok", "model": settings.vllm_model}
 
     @app.post("/api/chat")
     def chat(req: ChatRequest):
@@ -73,33 +83,7 @@ def make_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="Missing 'message'")
         top_k = int(req.top_k or 5)
         try:
-            # If llm override is provided, build a per-request pipeline to avoid
-            # mutating the shared instance (thread-safe for mixed backends).
-            used_llm = None
-            if req.llm:
-                llm_choice = (req.llm or "").strip().lower()
-                if llm_choice not in ("ollama", "gemini", "cerebras"):
-                    raise HTTPException(status_code=400, detail="Invalid 'llm' value; use 'ollama', 'gemini', or 'cerebras'")
-                key_override = (
-                    req.llm_api_key
-                    or (req.gemini_api_key if llm_choice == "gemini" else None)
-                    or (req.cerebras_api_key if llm_choice == "cerebras" else None)
-                )
-                local_rag = RAGPipeline(llm=llm_choice, api_key=key_override)
-                result = local_rag.answer(q, top_k=top_k)
-                used_llm = llm_choice
-            else:
-                result = rag.answer(q, top_k=top_k)
-                # Infer backend from shared pipeline
-                try:
-                    if isinstance(rag.chat, GeminiChat):
-                        used_llm = 'gemini'
-                    elif isinstance(rag.chat, CerebrasChat):
-                        used_llm = 'cerebras'
-                    else:
-                        used_llm = 'ollama'
-                except Exception:
-                    used_llm = 'ollama'
+            result = get_rag().answer(q, top_k=top_k)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"RAG error: {e}")
         contexts = [
@@ -110,7 +94,7 @@ def make_app() -> FastAPI:
             }
             for c in (result.get("contexts") or [])
         ]
-        return {"answer": result.get("answer", ""), "contexts": contexts, "backend": used_llm}
+        return {"answer": result.get("answer", ""), "contexts": contexts, "model": settings.vllm_model}
 
     # Debug endpoints to bring dev checks into the app
     @app.get("/api/debug/config")
@@ -121,8 +105,8 @@ def make_app() -> FastAPI:
             "CHROMA_DIR": s.chroma_dir,
             "CHROMA_COLLECTION": s.collection_name,
             "CHROMA_QUERY_MODE": getattr(s, "chroma_query_mode", "auto"),
-            "OLLAMA_BASE_URL": s.ollama_base_url,
-            "GENERATION_MODEL": s.generation_model,
+            "VLLM_BASE_URL": s.vllm_base_url,
+            "VLLM_MODEL": s.vllm_model,
             "EMBEDDING_MODEL": s.embedding_model,
             "TOP_K": s.top_k,
         }
@@ -145,7 +129,7 @@ def make_app() -> FastAPI:
     @app.post("/api/debug/retrieve")
     def debug_retrieve(req: DebugRetrieveRequest):
         try:
-            hits = rag.retrieve(req.query, top_k=int(req.top_k or 3))
+            hits = get_rag().retrieve(req.query, top_k=int(req.top_k or 3))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"retrieve failed: {e}")
         ctx = [
@@ -162,7 +146,7 @@ def make_app() -> FastAPI:
     @app.post("/api/debug/answer")
     def debug_answer(req: DebugAnswerRequest):
         try:
-            res = rag.answer((req.question or "").strip(), top_k=int(req.top_k or 3))
+            res = get_rag().answer((req.question or "").strip(), top_k=int(req.top_k or 3))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"answer failed: {e}")
         contexts = [

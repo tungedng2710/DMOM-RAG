@@ -1,90 +1,152 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DMOM RAG Workspace</title>
+    <meta name="theme-color" content="#f5f7f6" />
+    <meta name="description" content="Trợ lý tra cứu kiến thức sức khỏe thai kỳ dựa trên dữ liệu DMOM." />
+    <title>DMOM Health AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/static/logo.png" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <div class="container">
-      <header class="header">
+    <div id="app-shell" class="app-shell">
+      <aside class="navigation" aria-label="Thông tin hệ thống">
         <div class="brand">
-          <img class="logo" src="/static/logo.png" alt="DMOM logo" />
-          <div>
-            <div class="eyebrow">Knowledge Assistant</div>
-            <h1>DMOM RAG Workspace</h1>
+          <span class="brand-mark"><img src="/static/logo.png" alt="DMOM logo" /></span>
+          <span>
+            <strong>DMOM</strong>
+            <small>Health Intelligence</small>
+          </span>
+        </div>
+
+        <button id="clear" class="new-chat" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          Cuộc trò chuyện mới
+        </button>
+
+        <div class="nav-section">
+          <p class="nav-label">Không gian làm việc</p>
+          <div class="nav-item active">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5M20 12a8 8 0 0 1-8 8 9 9 0 0 1-4-.9L3 20l.9-4A8 8 0 1 1 20 12Z" /></svg>
+            Trợ lý hỏi đáp
+          </div>
+          <div class="nav-item muted">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Zm0 0v16" /></svg>
+            Kho tri thức DMOM
+            <span class="nav-tag">RAG</span>
           </div>
         </div>
-        <div class="header-actions">
-          <div class="status-pill"><span></span> Retrieval enabled</div>
-          <button id="toggle-controls" class="ghost" aria-expanded="false" aria-controls="control-board">Settings</button>
-        </div>
-      </header>
 
-      <section class="hero" aria-label="Workspace overview">
-        <div>
-          <p class="section-kicker">Secure document intelligence</p>
-          <h2>Ask precise questions across your indexed knowledge base.</h2>
+        <div class="system-card">
+          <div class="system-card-head">
+            <span class="model-icon">G</span>
+            <span><small>Mô hình suy luận</small><strong>GLM 5.3</strong></span>
+            <i aria-label="Đang hoạt động"></i>
+          </div>
+          <p>Phản hồi được tạo từ ngữ cảnh đã truy xuất trong kho dữ liệu.</p>
         </div>
-        <div class="hero-metrics" aria-label="Workspace capabilities">
-          <div><strong>RAG</strong><span>Grounded answers</span></div>
-          <div><strong>Top-K</strong><span>Tunable retrieval</span></div>
-          <div><strong>Sources</strong><span>Evidence panel</span></div>
-        </div>
-      </section>
 
-      <section id="control-board" class="control-board" aria-label="Control Board">
-        <div class="controls-bar">
-          <label class="control">
-            LLM
-            <select id="llm">
-              <option value="ollama" selected>Ollama</option>
-              <option value="gemini">Gemini</option>
-              <option value="cerebras">Cerebras</option>
-            </select>
-          </label>
-          <label class="control">
-            Top‑K
-            <input id="topk" type="number" min="1" max="10" value="5" />
-          </label>
-          <label class="control">
-            Sources
+        <div class="nav-settings">
+          <label for="topk">Số nguồn truy xuất</label>
+          <select id="topk" aria-label="Số nguồn truy xuất">
+            <option value="3">3 nguồn</option>
+            <option value="5" selected>5 nguồn</option>
+            <option value="8">8 nguồn</option>
+            <option value="10">10 nguồn</option>
+          </select>
+          <label class="switch-row">
+            <span>Hiện bảng nguồn</span>
             <input id="toggle-sources" type="checkbox" checked />
+            <span class="switch" aria-hidden="true"></span>
           </label>
-          <label class="control" id="llm-key-row" style="display:none">
-            <span id="llm-key-label">API Key</span>
-            <input id="llm-key" type="password" placeholder="Enter API Key" autocomplete="off" />
-          </label>
-          <button id="clear" class="ghost danger" title="Clear conversation">Clear conversation</button>
         </div>
-      </section>
 
-      <div class="main">
-        <main id="messages" class="messages" aria-live="polite" aria-label="Chat messages"></main>
-        <aside id="sources" class="sidebar" aria-label="Retrieved sources">
-          <div class="sidebar-title">Retrieved Sources</div>
-          <p class="sidebar-copy">Evidence from the latest answer appears here for review and traceability.</p>
-          <div id="sources-list" class="sources-list"></div>
-        </aside>
-      </div>
+        <p class="nav-footer">DMOM RAG Workspace <span>•</span> v2.0</p>
+      </aside>
 
-      <form id="composer" class="composer">
-        <textarea id="prompt" rows="1" placeholder="Ask a question about your indexed documents..."></textarea>
-        <button id="send" type="submit">Send</button>
-      </form>
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="overline">TRỢ LÝ TRI THỨC</p>
+            <h1>Sức khỏe thai kỳ</h1>
+          </div>
+          <div class="topbar-actions">
+            <span class="online-status"><i></i> Hệ thống sẵn sàng</span>
+            <button id="mobile-sources" class="icon-button" type="button" aria-label="Mở nguồn tham khảo" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Zm0 0v16" /></svg>
+            </button>
+          </div>
+        </header>
 
-      <footer class="footer">
-        <div class="hint">
-          Tip: Ingest your data first and ensure Ollama is running at localhost:7860.
+        <section id="messages" class="messages" aria-live="polite" aria-label="Nội dung trò chuyện">
+          <div id="welcome" class="welcome">
+            <div class="welcome-symbol" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><path d="M16 3a10 10 0 0 0-6.9 17.2L8 27l6.8-1.1A10 10 0 1 0 16 3Z" /><path d="M12 15h8M16 11v8" /></svg>
+            </div>
+            <p class="overline">DMOM HEALTH AI</p>
+            <h2>Bạn muốn tìm hiểu điều gì?</h2>
+            <p class="welcome-copy">Đặt câu hỏi về sức khỏe thai kỳ. Tôi sẽ tổng hợp câu trả lời từ kho tri thức và dẫn nguồn rõ ràng.</p>
+            <div class="suggestions" aria-label="Câu hỏi gợi ý">
+              <button type="button" data-prompt="Những dấu hiệu nào trong thai kỳ cần đi khám ngay?">
+                <span class="suggestion-icon coral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M10.3 3.8 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.8a2 2 0 0 0-3.4 0Z" /></svg></span>
+                <span><strong>Dấu hiệu cần lưu ý</strong><small>Khi nào cần thăm khám ngay?</small></span>
+                <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+              <button type="button" data-prompt="Chế độ dinh dưỡng phù hợp trong ba tháng đầu thai kỳ là gì?">
+                <span class="suggestion-icon mint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V10m0 3C7 13 4 9 4 4c5 0 8 3 8 8m0 3c5 0 8-4 8-9-5 0-8 3-8 8" /></svg></span>
+                <span><strong>Dinh dưỡng thai kỳ</strong><small>Gợi ý cho ba tháng đầu</small></span>
+                <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+              <button type="button" data-prompt="Lịch khám thai định kỳ gồm những mốc quan trọng nào?">
+                <span class="suggestion-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z" /></svg></span>
+                <span><strong>Lịch khám định kỳ</strong><small>Các mốc quan trọng cần nhớ</small></span>
+                <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <div class="composer-area">
+          <form id="composer" class="composer">
+            <textarea id="prompt" rows="1" maxlength="4000" placeholder="Nhập câu hỏi về sức khỏe thai kỳ..." aria-label="Câu hỏi"></textarea>
+            <div class="composer-tools">
+              <span>Enter để gửi <b>•</b> Shift + Enter để xuống dòng</span>
+              <button id="send" type="submit" aria-label="Gửi câu hỏi">
+                <span>Gửi</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-8-4 16-3-6-7-2Zm7 2 7-10" /></svg>
+              </button>
+            </div>
+          </form>
+          <p class="disclaimer">Thông tin mang tính tham khảo, không thay thế chẩn đoán hoặc tư vấn trực tiếp từ bác sĩ.</p>
         </div>
-      </footer>
+      </main>
+
+      <aside id="sources" class="evidence-panel" aria-label="Nguồn tham khảo">
+        <div class="evidence-head">
+          <div>
+            <p class="overline">EVIDENCE</p>
+            <h2>Nguồn tham khảo <span id="source-count">0</span></h2>
+          </div>
+          <button id="close-sources" class="icon-button close-sources" type="button" aria-label="Đóng nguồn tham khảo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+        <p class="evidence-intro">Các đoạn dữ liệu được dùng để tạo câu trả lời gần nhất.</p>
+        <div id="sources-list" class="sources-list">
+          <div class="sources-empty">
+            <span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 5h16a3 3 0 0 1 3 3v19H9a3 3 0 0 1-3-3V5Zm0 19a3 3 0 0 1 3-3h16M11 11h9M11 15h7" /></svg></span>
+            <strong>Chưa có nguồn được truy xuất</strong>
+            <p>Nguồn liên quan sẽ xuất hiện tại đây sau khi bạn đặt câu hỏi.</p>
+          </div>
+        </div>
+      </aside>
+      <button id="panel-overlay" class="panel-overlay" type="button" aria-label="Đóng bảng nguồn"></button>
     </div>
 
     <script src="/static/app.js"></script>
   </body>
-  </html>
+</html>
