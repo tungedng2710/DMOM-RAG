@@ -4,8 +4,11 @@ Official Code for the Paper [VPHQA_ VIETNAMESE PREGNANCY HEALTH QUESTION ANSWERI
 
 This project builds a Retrieval Augmented Generation (RAG) pipeline over the `tungedng2710/Dmom_dataset` dataset using a local vector database (Chroma) and GLM 5.3 served through an OpenAI-compatible vLLM endpoint.
 
-Demo
-![Chat Demo](app/static/demo.png)
+## Demo
+
+[Open the live DMOM Health AI demo](https://7866--main--frontier--idp-lab.coder.vts-ai.space)
+
+[![DMOM Health AI demo](assets/demo_dmom.png)](https://7866--main--frontier--idp-lab.coder.vts-ai.space)
 
 Key choices:
 - Vector DB: Chroma (local persistent store)
