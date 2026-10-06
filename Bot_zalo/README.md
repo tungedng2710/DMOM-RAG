@@ -1,5 +1,32 @@
 # Cách tạo bot Zalo Bot Platform
 
+## Trả lời bằng RAG như web app
+
+Bot sử dụng `tonrag.rag.RAGPipeline.answer()` với `top_k=5`, giống endpoint
+`/api/chat` của web app. Câu hỏi được truy xuất từ Chroma, sau đó gửi cùng
+ngữ cảnh đến GLM 5.3 vLLM; câu trả lời giữ nguyên trích dẫn `[1]`, `[2]`.
+Cuối tin nhắn có mục `Nguồn tham khảo` chỉ liệt kê tên tài liệu được trích dẫn,
+không kèm số phần, nhà xuất bản hay năm xuất bản. Các trích dẫn cùng tên tài
+liệu được gộp trên một dòng. Nếu câu trả lời không có trích dẫn, bot liệt kê
+tên tài liệu đã truy xuất; nguồn không có tên được bỏ qua.
+Nếu LLM không hoạt động, pipeline sử dụng câu trả lời từ tài liệu truy xuất
+đầu tiên, giống web app.
+
+Cấu hình Zalo nằm trong `Bot_zalo/.env`. Bot cũng đọc `.env` ở thư mục gốc
+cho `CHROMA_DIR`, `CHROMA_COLLECTION`, `OLLAMA_BASE_URL` và các biến `VLLM_*`.
+Biến môi trường đã có sẵn được ưu tiên, sau đó là `Bot_zalo/.env`, rồi `.env`
+ở thư mục gốc. Đường dẫn Chroma tương đối được tính từ thư mục gốc dự án.
+
+```bash
+conda activate tungn197
+pip install -r Bot_zalo/requirements.txt
+cd Bot_zalo
+python -m flask --app app run --host 0.0.0.0 --port 7866 --no-reload
+```
+
+Cần có collection Chroma đã được tạo và dịch vụ embeddings Ollama với model
+`bge-m3:latest`. URL webhook cho ngrok là `https://<ngrok-host>/webhook`.
+
 ## Tạo Bot trên Zalo Bot Platform
 1. Mở Zalo → tìm "Zalo Bot Manager".
 2. Bấm vào "Tạo bot".
