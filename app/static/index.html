@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f5f7f6" />
+    <meta name="theme-color" content="#f7f3e9" />
     <meta name="description" content="Trợ lý tra cứu kiến thức sức khỏe thai kỳ dựa trên dữ liệu DMOM." />
     <title>DMOM Health AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/static/logo.png" />
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css?v=20261110" />
   </head>
   <body>
     <div id="app-shell" class="app-shell">
@@ -75,6 +75,7 @@
             <h1>Sức khỏe thai kỳ</h1>
           </div>
           <div class="topbar-actions">
+            <button id="mobile-clear" class="icon-button" type="button" aria-label="Cuộc trò chuyện mới"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
             <span class="online-status"><i></i> Hệ thống sẵn sàng</span>
             <button id="mobile-sources" class="icon-button" type="button" aria-label="Mở nguồn tham khảo" aria-expanded="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Zm0 0v16" /></svg>
@@ -89,7 +90,7 @@
             </div>
             <p class="overline">DMOM HEALTH AI</p>
             <h2>Bạn muốn tìm hiểu điều gì?</h2>
-            <p class="welcome-copy">Đặt câu hỏi về sức khỏe thai kỳ. Tôi sẽ tổng hợp câu trả lời từ kho tri thức và dẫn nguồn rõ ràng.</p>
+            <p class="welcome-copy">Đặt câu hỏi về sức khỏe thai kỳ. Chọn mô tả phù hợp khi cần làm rõ triệu chứng, rồi khám phá câu trả lời có dẫn nguồn.</p>
             <div class="suggestions" aria-label="Câu hỏi gợi ý">
               <button type="button" data-prompt="Những dấu hiệu nào trong thai kỳ cần đi khám ngay?">
                 <span class="suggestion-icon coral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4m0 4h.01M10.3 3.8 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.8a2 2 0 0 0-3.4 0Z" /></svg></span>
@@ -147,6 +148,6 @@
       <button id="panel-overlay" class="panel-overlay" type="button" aria-label="Đóng bảng nguồn"></button>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=20261110"></script>
   </body>
 </html>

@@ -6,9 +6,9 @@ This project builds a Retrieval Augmented Generation (RAG) pipeline over the `tu
 
 ## Demo
 
-[Open the live DMOM Health AI demo](https://7866--main--frontier--idp-lab.coder.vts-ai.space)
+[Open the live DMOM Health AI demo](https://chat.tonai-lab.io.vn)
 
-[![DMOM Health AI demo](assets/demo_dmom.png)](https://7866--main--frontier--idp-lab.coder.vts-ai.space)
+[![DMOM Health AI demo with serif typography and an ivory background](assets/demo_dmom.png)](https://chat.tonai-lab.io.vn)
 
 Key choices:
 - Vector DB: Chroma (local persistent store)

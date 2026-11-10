@@ -20,11 +20,13 @@ if ROOT_DIR not in sys.path:
 
 from tonrag.rag import RAGPipeline  # noqa: E402
 from tonrag.config import settings  # noqa: E402
+from app.clarification import symptom_menu  # noqa: E402
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(max_length=4000)
     top_k: int = Field(default=5, ge=1, le=10)
+    clarification_choice: Optional[str] = Field(default=None, max_length=10)
 
     class Config:
         extra = "forbid"
@@ -81,6 +83,14 @@ def make_app() -> FastAPI:
         q = (req.message or "").strip()
         if not q:
             raise HTTPException(status_code=400, detail="Missing 'message'")
+        menu = symptom_menu(q)
+        if req.clarification_choice is not None:
+            option = next((o for o in (menu or {}).get("options", []) if o["id"] == req.clarification_choice), None)
+            if option is None:
+                raise HTTPException(status_code=400, detail="Invalid clarification choice")
+            q = f"{q}\nChi tiết người dùng chọn: {option['label']}"
+        elif menu:
+            return {"type": "clarification", "clarification": menu, "contexts": [], "model": settings.vllm_model}
         top_k = int(req.top_k or 5)
         try:
             result = get_rag().answer(q, top_k=top_k)

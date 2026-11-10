@@ -13,7 +13,8 @@ const mobileSourcesBtn = document.getElementById('mobile-sources');
 const closeSourcesBtn = document.getElementById('close-sources');
 const panelOverlayEl = document.getElementById('panel-overlay');
 
-const state = { messages: [] };
+const state = { messages: [], controller: null };
+let clarificationEl = null;
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => ({
@@ -219,11 +220,12 @@ function renderSources(contexts = []) {
   });
 }
 
-async function sendPrompt(question) {
+async function sendPrompt(question, choice, signal) {
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: question, top_k: Number(topkEl.value || 5) })
+    signal,
+    body: JSON.stringify({ message: question, top_k: Number(topkEl.value || 5), ...(choice !== undefined ? { clarification_choice: choice } : {}) })
   });
   let data = {};
   try { data = await response.json(); } catch (_) { /* handled below */ }
@@ -231,35 +233,94 @@ async function sendPrompt(question) {
   return data;
 }
 
-async function handleSend(event, suggestedPrompt) {
+function removeClarification() {
+  if (clarificationEl) clarificationEl.remove();
+  clarificationEl = null;
+}
+
+function renderClarification(menu, question) {
+  removeClarification();
+  const panel = document.createElement('section');
+  panel.className = 'clarification-card';
+  panel.setAttribute('aria-labelledby', 'clarification-title');
+  const eyebrow = document.createElement('p');
+  eyebrow.className = 'overline';
+  eyebrow.textContent = 'CÙNG LÀM RÕ';
+  const title = document.createElement('h2');
+  title.id = 'clarification-title';
+  title.tabIndex = -1;
+  title.textContent = menu.title;
+  const description = document.createElement('p');
+  description.className = 'clarification-description';
+  description.textContent = menu.description;
+  const options = document.createElement('div');
+  options.className = 'clarification-options';
+  menu.options.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = option.label;
+    button.addEventListener('click', () => handleSend(null, question, option.id, option.label));
+    options.appendChild(button);
+  });
+  const custom = document.createElement('button');
+  custom.type = 'button';
+  custom.className = 'clarification-custom';
+  custom.textContent = 'Tự mô tả thêm →';
+  custom.addEventListener('click', () => {
+    promptEl.value = `${question} — `;
+    autoResize();
+    promptEl.focus();
+    scrollToLatest();
+  });
+  panel.append(eyebrow, title, description, options, custom);
+  messagesEl.appendChild(panel);
+  clarificationEl = panel;
+  renderSources([]);
+  scrollToLatest();
+  requestAnimationFrame(() => title.focus({ preventScroll: true }));
+}
+
+async function handleSend(event, suggestedPrompt, choice, displayText) {
   if (event) event.preventDefault();
   const question = String(suggestedPrompt || promptEl.value || '').trim();
   if (!question || sendBtn.disabled) return;
 
+  removeClarification();
   sendBtn.disabled = true;
-  state.messages.push({ role: 'user', content: question });
-  renderMessage({ role: 'user', content: question });
+  const controller = new AbortController();
+  state.controller = controller;
+  state.messages.push({ role: 'user', content: displayText || question });
+  renderMessage({ role: 'user', content: displayText || question });
   promptEl.value = '';
   autoResize();
   const typingRow = addTyping();
 
   try {
-    const data = await sendPrompt(question);
+    const data = await sendPrompt(question, choice, controller.signal);
+    if (controller.signal.aborted) return;
     typingRow.remove();
+    if (data.type === 'clarification') {
+      renderClarification(data.clarification, question);
+      return;
+    }
     const answer = data.answer || 'Tôi chưa tìm thấy câu trả lời phù hợp trong kho tri thức.';
     state.messages.push({ role: 'assistant', content: answer, contexts: data.contexts || [] });
     renderMessage({ role: 'assistant', content: answer });
     renderSources(data.contexts || []);
   } catch (error) {
     typingRow.remove();
+    if (controller.signal.aborted) return;
     renderMessage({
       role: 'assistant',
       error: true,
       content: `Đã xảy ra lỗi khi xử lý câu hỏi. ${error.message || 'Vui lòng thử lại sau.'}`
     });
   } finally {
-    sendBtn.disabled = false;
-    promptEl.focus();
+    if (state.controller === controller) {
+      state.controller = null;
+      sendBtn.disabled = false;
+      if (!clarificationEl) promptEl.focus();
+    }
   }
 }
 
@@ -291,13 +352,21 @@ document.querySelectorAll('[data-prompt]').forEach((button) => {
   button.addEventListener('click', () => handleSend(null, button.dataset.prompt));
 });
 
-clearBtn.addEventListener('click', () => {
+function clearConversation() {
+  if (state.controller) state.controller.abort();
+  state.controller = null;
+  sendBtn.disabled = false;
+  removeClarification();
   state.messages = [];
   messagesEl.querySelectorAll('.message').forEach((message) => message.remove());
   welcomeEl.classList.remove('hidden');
   renderSources([]);
+  promptEl.value = '';
+  autoResize();
   promptEl.focus();
-});
+}
+clearBtn.addEventListener('click', clearConversation);
+document.getElementById('mobile-clear').addEventListener('click', clearConversation);
 
 sourcesToggleEl.addEventListener('change', () => {
   shellEl.classList.toggle('sources-hidden', !sourcesToggleEl.checked);
